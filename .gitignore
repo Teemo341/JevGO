@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# JevGO project-local runtimes, external sources, assets and smoke outputs
+.tools/
+models/
+data/
+artifacts/
+
+# Local development code and outputs; excluded from releases
+.dev/

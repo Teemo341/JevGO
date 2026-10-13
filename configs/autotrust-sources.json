@@ -1,0 +1,102 @@
+{
+  "models": [
+    {
+      "repository": "autotrust/JEV-27B",
+      "revision": "14b425269ed24452e0a5ad5a8f3e51d139647a88",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "ddff9a781adf07fef7a5985390e3ee18e46b0cd75aefc1886bd102a8bdfe9985"
+        },
+        {
+          "path": "adapter_vllm/adapter_config.json",
+          "sha256": "5ae16c5e11f37c5a67ec0e3b16d871fcc19c069090c1e42a6289f63c8067f6b6"
+        },
+        {
+          "path": "adapter_vllm/decision_head.json",
+          "sha256": "79fc56c3a030204a2410e6347272fb27facfe299f2f8c0a714e78fc6f8062776"
+        },
+        {
+          "path": "calibration.json",
+          "sha256": "902f4f26fdf1b92224c32b706ee6cea381f6465621c82975bf7e0023c02d9dd2"
+        },
+        {
+          "path": "config.json",
+          "sha256": "5a1c114fa93e7c2cdc262732ad831f786022fef86041f0c551576f9c3faff017"
+        },
+        {
+          "path": "judge_config.json",
+          "sha256": "372748b6c876e008ad05ecfb3a361f481e85444eaa083b31234dbded5c2f7cb1"
+        },
+        {
+          "path": "serve_decide.py",
+          "sha256": "b4c95faf8619b32241394f68dd1b5b5a1702a94da96f59c5467d8de4367b5132"
+        }
+      ]
+    },
+    {
+      "repository": "autotrust/JEV-27B-VL",
+      "revision": "da7a40b6450584e5843fab57bb4d80e092b377e0",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a80ce69b45d695787e8b7e11982bbc813e10cbc4e3803a08bb09e1190c0d9b59"
+        },
+        {
+          "path": "adapter_vllm/adapter_config.json",
+          "sha256": "5ae16c5e11f37c5a67ec0e3b16d871fcc19c069090c1e42a6289f63c8067f6b6"
+        },
+        {
+          "path": "adapter_vllm/decision_head.json",
+          "sha256": "79fc56c3a030204a2410e6347272fb27facfe299f2f8c0a714e78fc6f8062776"
+        },
+        {
+          "path": "calibration.json",
+          "sha256": "902f4f26fdf1b92224c32b706ee6cea381f6465621c82975bf7e0023c02d9dd2"
+        },
+        {
+          "path": "config.json",
+          "sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab"
+        },
+        {
+          "path": "serve.sh",
+          "sha256": "08e6600fcbef6348280ab592b5ca13b71bc3e495524f9aba71163f87dac9be45"
+        },
+        {
+          "path": "serve_decide.py",
+          "sha256": "b4c95faf8619b32241394f68dd1b5b5a1702a94da96f59c5467d8de4367b5132"
+        }
+      ]
+    },
+    {
+      "repository": "autotrust/JEV-9B",
+      "revision": "7ac669b8fb476ba926491e3d1c39f9330d68dbed",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "58fb41fd973819d3318d695a33c789840c44bb7124310f3179c915a40aa1e9ae"
+        },
+        {
+          "path": "adapter_vllm/adapter_config.json",
+          "sha256": "5ae16c5e11f37c5a67ec0e3b16d871fcc19c069090c1e42a6289f63c8067f6b6"
+        },
+        {
+          "path": "adapter_vllm/decision_head.json",
+          "sha256": "1ae78fc161dea47cb8e3d5b4f5de4ac61c48a33f8031b68052bf699be30ec7fc"
+        },
+        {
+          "path": "calibration.json",
+          "sha256": "9644305e85fac82944ec4353742af9c0fbc6434a277d3f0e54c2abb185aaf9b8"
+        },
+        {
+          "path": "config.json",
+          "sha256": "616e4e6b1ef1ca8b1832a1a8cb35d16a2281eb876c1bba5eb2cfb4960e496bbc"
+        },
+        {
+          "path": "judge_config.json",
+          "sha256": "0ee2ce84743b646e1c493619a8b55f71b94660f3a599467a1b8942f0eb68d677"
+        }
+      ]
+    }
+  ]
+}

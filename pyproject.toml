@@ -1,0 +1,41 @@
+[project]
+name = "jevgo"
+version = "0.1.0"
+description = "Unified offline-capable JevGO inference and benchmark environment"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "httpx==0.28.1",
+    "openai==3.29.0",
+    "pydantic==2.14.1",
+    "pyyaml==6.0.3",
+    "rich==14.3.4",
+    "requests==2.32.5",
+    "numpy==2.3.5",
+    "vllm==0.31.0+cu129",
+    "torch==2.13.0+cu129",
+    "torchvision==0.28.0+cu129",
+    "torchaudio==2.11.0+cu129",
+    "torchcodec==0.17.0+cpu",
+    "transformers==5.17.0",
+    "peft==0.21.2",
+    "accelerate==1.15.0",
+    "semif-phase1==0.1.0+jevgo.torch213.1",
+    "minigrid==3.1.0",
+    "pygame-ce==2.5.8",
+    "alfworld==0.4.2",
+    "textworld[pddl]==1.7.0",
+    "scienceworld==1.2.3",
+    "discoveryworld==0.0.2+jevgo.pygamece1",
+    "setuptools==84.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest==8.4.2"]
+
+[tool.uv]
+package = false
+no-index = true
+no-build = true
+find-links = [".cache/offline/wheels"]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

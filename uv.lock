@@ -1,0 +1,2896 @@
+version = 1
+revision = 3
+requires-python = "==3.11.*"
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+supported-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+
+[[package]]
+name = "accelerate"
+version = "1.15.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch" },
+]
+wheels = [
+    { path = "accelerate-1.15.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "agent-detector"
+version = "2.0.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "agent_detector-2.0.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "aiohappyeyeballs"
+version = "2.7.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "aiohappyeyeballs-2.7.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "aiohttp"
+version = "3.14.5"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "aiohappyeyeballs" },
+    { name = "aiosignal" },
+    { name = "attrs" },
+    { name = "frozenlist" },
+    { name = "multidict" },
+    { name = "propcache" },
+    { name = "typing-extensions" },
+    { name = "yarl" },
+]
+wheels = [
+    { path = "aiohttp-3.14.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "aiosignal"
+version = "1.4.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "frozenlist" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "aiosignal-1.4.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "alfworld"
+version = "0.4.2"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "textworld", extra = ["pddl"] },
+]
+wheels = [
+    { path = "alfworld-0.4.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "annotated-doc"
+version = "0.0.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "annotated_doc-0.0.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "annotated-types"
+version = "0.8.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "annotated_types-0.8.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "anthropic"
+version = "1.13.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "docstring-parser" },
+    { name = "httpx2" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "anthropic-1.13.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "anyio"
+version = "4.15.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "idna" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "anyio-4.15.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "apache-tvm-ffi"
+version = "0.1.11"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "apache_tvm_ffi-0.1.11-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "astor"
+version = "0.8.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "astor-0.8.1-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "attrs"
+version = "26.1.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "attrs-26.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "blake3"
+version = "1.0.11"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "blake3-1.0.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "blis"
+version = "1.3.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { path = "blis-1.3.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "cachetools"
+version = "7.2.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cachetools-7.2.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "catalogue"
+version = "2.0.10"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "catalogue-2.0.10-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cbor2"
+version = "6.1.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cbor2-6.1.5-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "certifi"
+version = "2026.7.22"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "certifi-2026.7.22-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cffi"
+version = "2.1.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "pycparser", marker = "implementation_name != 'PyPy'" },
+]
+wheels = [
+    { path = "cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "charset-normalizer"
+version = "3.5.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "charset_normalizer-3.5.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "click"
+version = "8.5.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "click-8.5.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cloudpathlib"
+version = "0.26.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cloudpathlib-0.26.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cloudpickle"
+version = "3.1.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cloudpickle-3.1.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "compressed-tensors"
+version = "0.17.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "loguru" },
+    { name = "pydantic" },
+    { name = "torch" },
+    { name = "transformers" },
+]
+wheels = [
+    { path = "compressed_tensors-0.17.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "confection"
+version = "1.3.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "confection-1.3.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "contourpy"
+version = "1.3.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { path = "contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "cryptography"
+version = "50.0.2"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+]
+wheels = [
+    { path = "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl" },
+]
+
+[[package]]
+name = "cuda-bindings"
+version = "12.9.9"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-pathfinder" },
+]
+wheels = [
+    { path = "cuda_bindings-12.9.9-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "cuda-core"
+version = "1.2.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-pathfinder" },
+    { name = "numpy" },
+]
+wheels = [
+    { path = "cuda_core-1.2.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "cuda-pathfinder"
+version = "1.8.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cuda_pathfinder-1.8.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cuda-python"
+version = "12.9.7"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-bindings" },
+]
+wheels = [
+    { path = "cuda_python-12.9.7-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cuda-tile"
+version = "1.6.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "cuda_tile-1.6.0-cp311-cp311-manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "cuda-toolkit"
+version = "12.9.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cuda_toolkit-12.9.1-py2.py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+cublas = [
+    { name = "nvidia-cublas-cu12" },
+]
+cudart = [
+    { name = "nvidia-cuda-runtime-cu12" },
+]
+cufft = [
+    { name = "nvidia-cufft-cu12" },
+]
+cufile = [
+    { name = "nvidia-cufile-cu12" },
+]
+cupti = [
+    { name = "nvidia-cuda-cupti-cu12" },
+]
+curand = [
+    { name = "nvidia-curand-cu12" },
+]
+cusolver = [
+    { name = "nvidia-cusolver-cu12" },
+]
+cusparse = [
+    { name = "nvidia-cusparse-cu12" },
+]
+nvjitlink = [
+    { name = "nvidia-nvjitlink-cu12" },
+]
+nvrtc = [
+    { name = "nvidia-cuda-nvrtc-cu12" },
+]
+nvtx = [
+    { name = "nvidia-nvtx-cu12" },
+]
+
+[[package]]
+name = "cycler"
+version = "0.12.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cycler-0.12.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "cymem"
+version = "2.0.13"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "cymem-2.0.13-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "depyf"
+version = "0.20.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "astor" },
+    { name = "dill" },
+]
+wheels = [
+    { path = "depyf-0.20.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "detect-installer"
+version = "0.2.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "detect_installer-0.2.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "dill"
+version = "0.4.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "dill-0.4.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "discoveryworld"
+version = "0.0.2+jevgo.pygamece1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "pathfinding" },
+    { name = "psutil" },
+    { name = "pygame-ce" },
+    { name = "termcolor" },
+    { name = "tiktoken" },
+]
+wheels = [
+    { path = "discoveryworld-0.0.2+jevgo.pygamece1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "dnspython"
+version = "2.9.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "dnspython-2.9.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "docstring-parser"
+version = "0.18.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "docstring_parser-0.18.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "einops"
+version = "0.8.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "einops-0.8.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "email-validator"
+version = "2.3.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "dnspython" },
+    { name = "idna" },
+]
+wheels = [
+    { path = "email_validator-2.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "farama-notifications"
+version = "0.0.6"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "farama_notifications-0.0.6-py3-none-any.whl" },
+]
+
+[[package]]
+name = "fast-downward-textworld"
+version = "20.6.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "fast_downward_textworld-20.6.4-py3-none-any.whl" },
+]
+
+[[package]]
+name = "fastapi"
+version = "0.136.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+wheels = [
+    { path = "fastapi-0.136.3-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "email-validator" },
+    { name = "fastapi-cli", extra = ["standard"] },
+    { name = "fastar" },
+    { name = "httpx" },
+    { name = "jinja2" },
+    { name = "pydantic-extra-types" },
+    { name = "pydantic-settings" },
+    { name = "python-multipart" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[[package]]
+name = "fastapi-cli"
+version = "0.0.32"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "rich-toolkit" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+wheels = [
+    { path = "fastapi_cli-0.0.32-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "fastapi-cloud-cli" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[[package]]
+name = "fastapi-cloud-cli"
+version = "0.26.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "agent-detector" },
+    { name = "detect-installer" },
+    { name = "fastar" },
+    { name = "httpx" },
+    { name = "pydantic", extra = ["email"] },
+    { name = "rich-toolkit" },
+    { name = "rignore" },
+    { name = "sentry-sdk" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+wheels = [
+    { path = "fastapi_cloud_cli-0.26.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "fastar"
+version = "0.12.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "fastar-0.12.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "fastsafetensors"
+version = "0.4.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typer" },
+]
+wheels = [
+    { path = "fastsafetensors-0.4.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "filelock"
+version = "4.1.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "filelock-4.1.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "flashinfer-python"
+version = "0.7.0.post1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "click" },
+    { name = "cuda-python" },
+    { name = "cuda-tile" },
+    { name = "einops" },
+    { name = "nccl-extensions" },
+    { name = "nccl4py" },
+    { name = "ninja" },
+    { name = "numpy" },
+    { name = "nvidia-cudnn-frontend" },
+    { name = "nvidia-cutlass-dsl" },
+    { name = "nvidia-ml-py" },
+    { name = "packaging" },
+    { name = "requests" },
+    { name = "tabulate" },
+    { name = "torch" },
+    { name = "tqdm" },
+]
+wheels = [
+    { path = "flashinfer_python-0.7.0.post1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "fonttools"
+version = "4.66.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "fonttools-4.66.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "frozenlist"
+version = "1.8.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "frozenlist-1.8.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "fsspec"
+version = "2026.9.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "fsspec-2026.9.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "googleapis-common-protos"
+version = "1.75.5"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "protobuf" },
+]
+wheels = [
+    { path = "googleapis_common_protos-1.75.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "grpcio"
+version = "1.84.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "grpcio-1.84.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "gymnasium"
+version = "1.4.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cloudpickle" },
+    { name = "farama-notifications" },
+    { name = "numpy" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "gymnasium-1.4.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "h11"
+version = "0.16.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "h11-0.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "hashids"
+version = "1.3.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "hashids-1.3.1-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "hf-xet"
+version = "1.7.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "hf_xet-1.7.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "httpcore"
+version = "1.0.9"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "certifi" },
+    { name = "h11" },
+]
+wheels = [
+    { path = "httpcore-1.0.9-py3-none-any.whl" },
+]
+
+[[package]]
+name = "httpcore2"
+version = "2.13.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "h11" },
+    { name = "truststore" },
+]
+wheels = [
+    { path = "httpcore2-2.13.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "httptools"
+version = "0.9.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "httptools-0.9.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "httpx"
+version = "0.28.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "certifi" },
+    { name = "httpcore" },
+    { name = "idna" },
+]
+wheels = [
+    { path = "httpx-0.28.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "httpx2"
+version = "2.13.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpcore2" },
+    { name = "idna" },
+    { name = "truststore" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "httpx2-2.13.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "huggingface-hub"
+version = "1.33.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "click" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "hf-xet" },
+    { name = "httpx" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "tqdm" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "huggingface_hub-1.33.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "humming-kernels"
+version = "0.1.16"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-bindings" },
+    { name = "jinja2" },
+    { name = "numpy" },
+    { name = "safetensors" },
+    { name = "tabulate" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "triton" },
+]
+wheels = [
+    { path = "humming_kernels-0.1.16-cp310-abi3-manylinux_2_28_x86_64.whl" },
+]
+
+[package.optional-dependencies]
+cu12 = [
+    { name = "nvidia-cuda-cccl-cu12" },
+    { name = "nvidia-cuda-nvcc-cu12" },
+    { name = "nvidia-cuda-nvrtc-cu12" },
+    { name = "nvidia-cuda-runtime-cu12" },
+]
+
+[[package]]
+name = "idna"
+version = "3.20"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "idna-3.20-py3-none-any.whl" },
+]
+
+[[package]]
+name = "ijson"
+version = "3.6.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "ijson-3.6.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "iniconfig"
+version = "2.3.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "iniconfig-2.3.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "instanttensor"
+version = "0.2.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "torch" },
+]
+wheels = [
+    { path = "instanttensor-0.2.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "interegular"
+version = "0.3.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "interegular-0.3.3-py37-none-any.whl" },
+]
+
+[[package]]
+name = "jericho"
+version = "3.3.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+    { name = "spacy" },
+    { name = "termcolor" },
+]
+wheels = [
+    { path = "jericho-3.3.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "jevgo"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "accelerate" },
+    { name = "alfworld" },
+    { name = "discoveryworld" },
+    { name = "httpx" },
+    { name = "minigrid" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "peft" },
+    { name = "pydantic" },
+    { name = "pygame-ce" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "rich" },
+    { name = "scienceworld" },
+    { name = "semif-phase1" },
+    { name = "setuptools" },
+    { name = "textworld", extra = ["pddl"] },
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchcodec" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "vllm" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "accelerate", specifier = "==1.15.0" },
+    { name = "alfworld", specifier = "==0.4.2" },
+    { name = "discoveryworld", specifier = "==0.0.2+jevgo.pygamece1" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "minigrid", specifier = "==3.1.0" },
+    { name = "numpy", specifier = "==2.3.5" },
+    { name = "openai", specifier = "==3.29.0" },
+    { name = "peft", specifier = "==0.21.2" },
+    { name = "pydantic", specifier = "==2.14.1" },
+    { name = "pygame-ce", specifier = "==2.5.8" },
+    { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "requests", specifier = "==2.32.5" },
+    { name = "rich", specifier = "==14.3.4" },
+    { name = "scienceworld", specifier = "==1.2.3" },
+    { name = "semif-phase1", specifier = "==0.1.0+jevgo.torch213.1" },
+    { name = "setuptools", specifier = "==84.0.0" },
+    { name = "textworld", extras = ["pddl"], specifier = "==1.7.0" },
+    { name = "torch", specifier = "==2.13.0+cu129" },
+    { name = "torchaudio", specifier = "==2.11.0+cu129" },
+    { name = "torchcodec", specifier = "==0.17.0+cpu" },
+    { name = "torchvision", specifier = "==0.28.0+cu129" },
+    { name = "transformers", specifier = "==5.17.0" },
+    { name = "vllm", specifier = "==0.31.0+cu129" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = "==8.4.2" }]
+
+[[package]]
+name = "jinja2"
+version = "3.1.6"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "markupsafe" },
+]
+wheels = [
+    { path = "jinja2-3.1.6-py3-none-any.whl" },
+]
+
+[[package]]
+name = "jiter"
+version = "0.17.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "jiter-0.17.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "jmespath"
+version = "1.1.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "jmespath-1.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "jsonschema"
+version = "4.26.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "attrs" },
+    { name = "jsonschema-specifications" },
+    { name = "referencing" },
+    { name = "rpds-py" },
+]
+wheels = [
+    { path = "jsonschema-4.26.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "jsonschema-specifications"
+version = "2025.9.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "referencing" },
+]
+wheels = [
+    { path = "jsonschema_specifications-2025.9.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "kiwisolver"
+version = "1.5.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "kiwisolver-1.5.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "lark"
+version = "1.2.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "lark-1.2.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "llguidance"
+version = "1.7.6"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "llguidance-1.7.6-cp39-abi3-manylinux_2_31_x86_64.whl" },
+]
+
+[[package]]
+name = "llvmlite"
+version = "0.47.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "llvmlite-0.47.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "lm-format-enforcer"
+version = "0.11.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "interegular" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+wheels = [
+    { path = "lm_format_enforcer-0.11.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "loguru"
+version = "0.7.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "loguru-0.7.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "markdown-it-py"
+version = "4.2.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "mdurl" },
+]
+wheels = [
+    { path = "markdown_it_py-4.2.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "markupsafe"
+version = "3.0.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "markupsafe-3.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "matplotlib"
+version = "3.11.2"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "contourpy" },
+    { name = "cycler" },
+    { name = "fonttools" },
+    { name = "kiwisolver" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pillow" },
+    { name = "pyparsing" },
+    { name = "python-dateutil" },
+]
+wheels = [
+    { path = "matplotlib-3.11.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "mcp"
+version = "2.3.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx2" },
+    { name = "jsonschema" },
+    { name = "mcp-types" },
+    { name = "opentelemetry-api" },
+    { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "python-multipart" },
+    { name = "sse-starlette" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+    { name = "uvicorn" },
+]
+wheels = [
+    { path = "mcp-2.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mcp-types"
+version = "2.3.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "mcp_types-2.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "mdurl-0.1.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mementos"
+version = "1.3.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "mementos-1.3.1-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "minigrid"
+version = "3.1.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "gymnasium" },
+    { name = "numpy" },
+    { name = "pygame-ce" },
+]
+wheels = [
+    { path = "minigrid-3.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mistral-common"
+version = "1.12.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
+    { name = "requests" },
+    { name = "tiktoken" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "mistral_common-1.12.0-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+image = [
+    { name = "opencv-python-headless" },
+]
+
+[[package]]
+name = "ml-dtypes"
+version = "0.6.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { path = "ml_dtypes-0.6.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "model-hosting-container-standards"
+version = "0.1.16"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "jmespath" },
+    { name = "pydantic" },
+    { name = "setuptools" },
+    { name = "starlette" },
+    { name = "supervisor" },
+]
+wheels = [
+    { path = "model_hosting_container_standards-0.1.16-py3-none-any.whl" },
+]
+
+[[package]]
+name = "more-itertools"
+version = "11.1.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "more_itertools-11.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mpmath"
+version = "1.3.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "mpmath-1.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "msgspec"
+version = "0.22.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "msgspec-0.22.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "multidict"
+version = "7.1.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "multidict-7.1.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "murmurhash"
+version = "1.0.15"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "murmurhash-1.0.15-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "nccl-extensions"
+version = "0.1.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-core" },
+    { name = "cuda-pathfinder" },
+    { name = "nccl4py" },
+    { name = "numpy" },
+    { name = "packaging" },
+]
+wheels = [
+    { path = "nccl_extensions-0.1.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nccl4py"
+version = "0.6.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-core" },
+    { name = "cuda-pathfinder" },
+    { name = "numpy" },
+    { name = "packaging" },
+]
+wheels = [
+    { path = "nccl4py-0.6.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "networkx"
+version = "3.6.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "networkx-3.6.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "ninja"
+version = "1.13.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "numba"
+version = "0.65.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "llvmlite" },
+    { name = "numpy" },
+]
+wheels = [
+    { path = "numba-0.65.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "numpy"
+version = "2.3.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "numpy-2.3.5-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cublas-cu12"
+version = "12.9.1.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cublas_cu12-12.9.1.4-py3-none-manylinux_2_27_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-cccl-cu12"
+version = "12.9.27"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_cccl_cu12-12.9.27-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-cupti-cu12"
+version = "12.9.79"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_cupti_cu12-12.9.79-py3-none-manylinux_2_25_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-nvcc-cu12"
+version = "12.9.86"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_nvcc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-nvdisasm"
+version = "13.4.92"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_nvdisasm-13.4.92-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-nvrtc-cu12"
+version = "12.9.86"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_nvrtc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cuda-runtime-cu12"
+version = "12.9.79"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cudnn-cu12"
+version = "9.20.0.48"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "nvidia-cublas-cu12" },
+]
+wheels = [
+    { path = "nvidia_cudnn_cu12-9.20.0.48-py3-none-manylinux_2_27_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cudnn-frontend"
+version = "1.31.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "nvidia-cutlass-dsl", extra = ["cu13"] },
+]
+wheels = [
+    { path = "nvidia_cudnn_frontend-1.31.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cufft-cu12"
+version = "11.4.1.4"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "nvidia-nvjitlink-cu12" },
+]
+wheels = [
+    { path = "nvidia_cufft_cu12-11.4.1.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cufile-cu12"
+version = "1.14.1.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cufile_cu12-1.14.1.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-curand-cu12"
+version = "10.3.10.19"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_curand_cu12-10.3.10.19-py3-none-manylinux_2_27_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cusolver-cu12"
+version = "11.7.5.82"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cusparse-cu12" },
+    { name = "nvidia-nvjitlink-cu12" },
+]
+wheels = [
+    { path = "nvidia_cusolver_cu12-11.7.5.82-py3-none-manylinux_2_27_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cusparse-cu12"
+version = "12.5.10.65"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "nvidia-nvjitlink-cu12" },
+]
+wheels = [
+    { path = "nvidia_cusparse_cu12-12.5.10.65-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cusparselt-cu12"
+version = "0.8.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_cusparselt_cu12-0.8.1-py3-none-manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cutlass-dsl"
+version = "4.7.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "nvidia-cutlass-dsl-libs-base" },
+    { name = "nvidia-cutlass-dsl-libs-cu12" },
+]
+wheels = [
+    { path = "nvidia_cutlass_dsl-4.7.1-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+cu13 = [
+    { name = "nvidia-cutlass-dsl-libs-cu13" },
+]
+
+[[package]]
+name = "nvidia-cutlass-dsl-libs-base"
+version = "4.7.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-python" },
+    { name = "numpy" },
+    { name = "nvidia-cuda-nvdisasm" },
+    { name = "nvidia-cutlass-dsl-libs-core" },
+    { name = "protobuf" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "nvidia_cutlass_dsl_libs_base-4.7.1-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cutlass-dsl-libs-core"
+version = "4.7.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-python" },
+    { name = "numpy" },
+    { name = "nvidia-cuda-nvdisasm" },
+    { name = "protobuf" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "nvidia_cutlass_dsl_libs_core-4.7.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "nvidia-cutlass-dsl-libs-cu12"
+version = "4.7.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-python" },
+    { name = "numpy" },
+    { name = "nvidia-cuda-nvdisasm" },
+    { name = "nvidia-cutlass-dsl-libs-base" },
+    { name = "protobuf" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "nvidia_cutlass_dsl_libs_cu12-4.7.1-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-cutlass-dsl-libs-cu13"
+version = "4.7.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-python" },
+    { name = "numpy" },
+    { name = "nvidia-cuda-nvdisasm" },
+    { name = "nvidia-cutlass-dsl-libs-base" },
+    { name = "protobuf" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "nvidia_cutlass_dsl_libs_cu13-4.7.1-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-ml-py"
+version = "13.615.71"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_ml_py-13.615.71-py3-none-any.whl" },
+]
+
+[[package]]
+name = "nvidia-nccl-cu12"
+version = "2.29.7"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_nccl_cu12-2.29.7-py3-none-manylinux_2_18_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-nvjitlink-cu12"
+version = "12.9.86"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_nvjitlink_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-nvshmem-cu12"
+version = "3.4.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_nvshmem_cu12-3.4.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "nvidia-nvtx-cu12"
+version = "12.9.79"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvidia_nvtx_cu12-12.9.79-py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "nvtx"
+version = "0.2.15"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "nvtx-0.2.15-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "openai"
+version = "3.29.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx2" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "openai-3.29.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opencv-python-headless"
+version = "5.0.0.93"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { path = "opencv_python_headless-5.0.0.93-cp37-abi3-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "opentelemetry-api"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "opentelemetry_api-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-http-transport"
+version = "0.66b1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-api" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_http_transport-0.66b1-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+requests = [
+    { name = "requests" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_otlp-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-common"
+version = "0.66b1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-sdk" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_otlp_common-0.66b1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-common"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-proto" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_otlp_proto_common-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-grpc"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "grpcio" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-common" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_otlp_proto_grpc-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-http-transport", extra = ["requests"] },
+    { name = "opentelemetry-exporter-otlp-common" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "opentelemetry_exporter_otlp_proto_http-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-proto"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "protobuf" },
+]
+wheels = [
+    { path = "opentelemetry_proto-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-sdk"
+version = "1.45.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "opentelemetry_sdk-1.45.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.66b1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "opentelemetry_semantic_conventions-0.66b1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-semantic-conventions-ai"
+version = "0.5.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+wheels = [
+    { path = "opentelemetry_semantic_conventions_ai-0.5.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "oss-harmony"
+version = "0.0.11"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "pydantic" },
+]
+wheels = [
+    { path = "oss_harmony-0.0.11-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "outlines-core"
+version = "0.2.14"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "outlines_core-0.2.14-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "packaging"
+version = "26.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "packaging-26.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "partial-json-parser"
+version = "0.2.1.1.post7"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "partial_json_parser-0.2.1.1.post7-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pathfinding"
+version = "1.0.22"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pathfinding-1.0.22-py3-none-any.whl" },
+]
+
+[[package]]
+name = "peft"
+version = "0.21.2"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+wheels = [
+    { path = "peft-0.21.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pillow"
+version = "12.3.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pillow-12.3.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pluggy-1.6.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "preshed"
+version = "3.0.13"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cymem" },
+    { name = "murmurhash" },
+]
+wheels = [
+    { path = "preshed-3.0.13-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.26.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "prometheus_client-0.26.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "prometheus-fastapi-instrumentator"
+version = "8.1.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "prometheus-client" },
+    { name = "starlette" },
+]
+wheels = [
+    { path = "prometheus_fastapi_instrumentator-8.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "prompt-toolkit"
+version = "3.0.53"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "wcwidth" },
+]
+wheels = [
+    { path = "prompt_toolkit-3.0.53-py3-none-any.whl" },
+]
+
+[[package]]
+name = "propcache"
+version = "0.5.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "propcache-0.5.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "protobuf"
+version = "7.36.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "psutil"
+version = "7.2.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "py-cpuinfo"
+version = "9.0.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "py_cpuinfo-9.0.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "py4j"
+version = "0.10.9.9"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "py4j-0.10.9.9-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "pybase64"
+version = "1.5.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pybase64-1.5.1-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "pycountry"
+version = "26.2.16"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pycountry-26.2.16-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pycparser"
+version = "3.11"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pycparser-3.11-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pydantic"
+version = "2.14.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "annotated-types" },
+    { name = "pydantic-core" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+wheels = [
+    { path = "pydantic-2.14.1-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+email = [
+    { name = "email-validator" },
+]
+
+[[package]]
+name = "pydantic-core"
+version = "2.50.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "pydantic_core-2.50.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "pydantic-extra-types"
+version = "2.11.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "pydantic_extra_types-2.11.1-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+pycountry = [
+    { name = "pycountry" },
+]
+
+[[package]]
+name = "pydantic-settings"
+version = "2.15.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "typing-inspection" },
+]
+wheels = [
+    { path = "pydantic_settings-2.15.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pygame-ce"
+version = "2.5.8"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pygame_ce-2.5.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "pygments"
+version = "2.21.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pygments-2.21.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.15.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pyjwt-2.15.1-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography" },
+]
+
+[[package]]
+name = "pynvvideocodec"
+version = "2.0.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pynvvideocodec-2.0.4-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "pyparsing"
+version = "3.3.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pyparsing-3.3.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pytest"
+version = "8.4.2"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+wheels = [
+    { path = "pytest-8.4.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "python-dateutil"
+version = "2.9.0.post0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "six" },
+]
+wheels = [
+    { path = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "python-dotenv"
+version = "1.2.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "python_dotenv-1.2.4-py3-none-any.whl" },
+]
+
+[[package]]
+name = "python-json-logger"
+version = "4.2.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "python_json_logger-4.2.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "python-multipart"
+version = "0.0.32"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "python_multipart-0.0.32-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pyyaml"
+version = "6.0.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "pyzmq"
+version = "27.2.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cffi", marker = "implementation_name == 'pypy'" },
+]
+wheels = [
+    { path = "pyzmq-27.2.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "quack-kernels"
+version = "0.6.5"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "einops" },
+    { name = "nvidia-cutlass-dsl" },
+    { name = "torch" },
+    { name = "torch-c-dlpack-ext" },
+]
+wheels = [
+    { path = "quack_kernels-0.6.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "referencing"
+version = "0.37.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "attrs" },
+    { name = "rpds-py" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "referencing-0.37.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "regex"
+version = "2026.9.29"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "regex-2026.9.29-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "requests"
+version = "2.32.5"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "idna" },
+    { name = "urllib3" },
+]
+wheels = [
+    { path = "requests-2.32.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "rich"
+version = "14.3.4"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+wheels = [
+    { path = "rich-14.3.4-py3-none-any.whl" },
+]
+
+[[package]]
+name = "rich-toolkit"
+version = "0.20.6"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "click" },
+    { name = "rich" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "rich_toolkit-0.20.6-py3-none-any.whl" },
+]
+
+[[package]]
+name = "rignore"
+version = "0.8.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "rignore-0.8.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "rpds-py"
+version = "2026.9.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "rpds_py-2026.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "safetensors"
+version = "0.8.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "scienceworld"
+version = "1.2.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "py4j" },
+]
+wheels = [
+    { path = "scienceworld-1.2.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "semif-phase1"
+version = "0.1.0+jevgo.torch213.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "protobuf" },
+    { name = "safetensors" },
+    { name = "sentencepiece" },
+    { name = "tokenizers" },
+    { name = "torch" },
+    { name = "transformers" },
+]
+wheels = [
+    { path = "semif_phase1-0.1.0+jevgo.torch213.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "sentencepiece"
+version = "0.2.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "sentencepiece-0.2.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.72.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+wheels = [
+    { path = "sentry_sdk-2.72.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "setproctitle"
+version = "1.3.8"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "setproctitle-1.3.8-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "setuptools"
+version = "84.0.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "setuptools-84.0.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "shellingham-1.5.4-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "six-1.17.0-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "smart-open"
+version = "8.0.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "wrapt" },
+]
+wheels = [
+    { path = "smart_open-8.0.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "sniffio"
+version = "1.3.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "sniffio-1.3.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "spacy"
+version = "3.8.16"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "catalogue" },
+    { name = "click" },
+    { name = "confection" },
+    { name = "cymem" },
+    { name = "jinja2" },
+    { name = "murmurhash" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "preshed" },
+    { name = "pydantic" },
+    { name = "requests" },
+    { name = "setuptools" },
+    { name = "spacy-legacy" },
+    { name = "spacy-loggers" },
+    { name = "srsly" },
+    { name = "thinc" },
+    { name = "tqdm" },
+    { name = "typer" },
+    { name = "wasabi" },
+    { name = "weasel" },
+]
+wheels = [
+    { path = "spacy-3.8.16-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "spacy-legacy"
+version = "3.0.12"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "spacy_legacy-3.0.12-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "spacy-loggers"
+version = "1.0.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "spacy_loggers-1.0.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "srsly"
+version = "2.5.4"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "catalogue" },
+]
+wheels = [
+    { path = "srsly-2.5.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "sse-starlette"
+version = "3.5.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "starlette" },
+]
+wheels = [
+    { path = "sse_starlette-3.5.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "starlette"
+version = "1.8.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "starlette-1.8.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "supervisor"
+version = "4.3.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "supervisor-4.3.0-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "sympy"
+version = "1.14.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "mpmath" },
+]
+wheels = [
+    { path = "sympy-1.14.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.10.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "tabulate-0.10.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "tatsu"
+version = "5.8.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "TatSu-5.8.3-py2.py3-none-any.whl" },
+]
+
+[[package]]
+name = "termcolor"
+version = "3.3.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "termcolor-3.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "textworld"
+version = "1.7.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "hashids" },
+    { name = "jericho" },
+    { name = "mementos" },
+    { name = "more-itertools" },
+    { name = "networkx" },
+    { name = "numpy" },
+    { name = "prompt-toolkit" },
+    { name = "tatsu" },
+    { name = "termcolor" },
+    { name = "tqdm" },
+]
+wheels = [
+    { path = "textworld-1.7.0-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[package.optional-dependencies]
+pddl = [
+    { name = "fast-downward-textworld" },
+]
+
+[[package]]
+name = "thinc"
+version = "8.3.13"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "blis" },
+    { name = "catalogue" },
+    { name = "confection" },
+    { name = "cymem" },
+    { name = "murmurhash" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "preshed" },
+    { name = "pydantic" },
+    { name = "setuptools" },
+    { name = "srsly" },
+    { name = "wasabi" },
+]
+wheels = [
+    { path = "thinc-8.3.13-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "tiktoken"
+version = "0.14.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "regex" },
+    { name = "requests" },
+]
+wheels = [
+    { path = "tiktoken-0.14.0-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "tilelang"
+version = "0.1.12"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "cloudpickle" },
+    { name = "ml-dtypes" },
+    { name = "numpy" },
+    { name = "psutil" },
+    { name = "torch" },
+    { name = "torch-c-dlpack-ext" },
+    { name = "tqdm" },
+    { name = "typing-extensions" },
+    { name = "z3-solver" },
+]
+wheels = [
+    { path = "tilelang-0.1.12-cp38-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "tokenizers"
+version = "0.23.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "huggingface-hub" },
+]
+wheels = [
+    { path = "tokenizers-0.23.3-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "tokenspeed-mla"
+version = "0.1.8"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "nvidia-cutlass-dsl" },
+    { name = "tokenspeed-triton" },
+    { name = "torch" },
+]
+wheels = [
+    { path = "tokenspeed_mla-0.1.8-py3-none-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "tokenspeed-triton"
+version = "3.9.10.post20261008"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "tokenspeed_triton-3.9.10.post20261008-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "torch"
+version = "2.13.0+cu129"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cuda-bindings" },
+    { name = "cuda-toolkit", extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"] },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "nvidia-cudnn-cu12" },
+    { name = "nvidia-cusparselt-cu12" },
+    { name = "nvidia-nccl-cu12" },
+    { name = "nvidia-nvshmem-cu12" },
+    { name = "setuptools" },
+    { name = "sympy" },
+    { name = "triton" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "torch-2.13.0+cu129-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "torch-c-dlpack-ext"
+version = "0.1.5"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "torch" },
+]
+wheels = [
+    { path = "torch_c_dlpack_ext-0.1.5-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "torchaudio"
+version = "2.11.0+cu129"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "torchaudio-2.11.0+cu129-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "torchcodec"
+version = "0.17.0+cpu"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "torchcodec-0.17.0+cpu-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "torchvision"
+version = "0.28.0+cu129"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "torch" },
+]
+wheels = [
+    { path = "torchvision-0.28.0+cu129-cp311-cp311-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "tqdm"
+version = "4.70.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "tqdm-4.70.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "transformers"
+version = "5.17.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "regex" },
+    { name = "safetensors" },
+    { name = "tokenizers" },
+    { name = "tqdm" },
+    { name = "typer" },
+]
+wheels = [
+    { path = "transformers-5.17.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "triton"
+version = "3.7.1"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "triton-3.7.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "truststore"
+version = "0.10.5"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "truststore-0.10.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "typer"
+version = "0.27.3"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "rich" },
+    { name = "shellingham" },
+]
+wheels = [
+    { path = "typer-0.27.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.16.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "typing_extensions-4.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "typing-inspection"
+version = "0.4.4"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "typing_inspection-0.4.4-py3-none-any.whl" },
+]
+
+[[package]]
+name = "urllib3"
+version = "2.8.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "urllib3-2.8.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.54.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "click" },
+    { name = "h11" },
+]
+wheels = [
+    { path = "uvicorn-0.54.0-py3-none-any.whl" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "httptools" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "uvloop", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "watchfiles" },
+    { name = "websockets" },
+]
+
+[[package]]
+name = "uvloop"
+version = "0.23.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "uvloop-0.23.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "vllm"
+version = "0.31.0+cu129"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "anthropic" },
+    { name = "apache-tvm-ffi" },
+    { name = "blake3" },
+    { name = "cachetools" },
+    { name = "cbor2" },
+    { name = "cloudpickle" },
+    { name = "compressed-tensors" },
+    { name = "depyf" },
+    { name = "einops" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "fastsafetensors" },
+    { name = "filelock" },
+    { name = "flashinfer-python" },
+    { name = "huggingface-hub" },
+    { name = "humming-kernels", extra = ["cu12"] },
+    { name = "ijson" },
+    { name = "instanttensor" },
+    { name = "jsonschema" },
+    { name = "lark" },
+    { name = "llguidance" },
+    { name = "lm-format-enforcer" },
+    { name = "mcp" },
+    { name = "mistral-common", extra = ["image"] },
+    { name = "model-hosting-container-standards" },
+    { name = "msgspec" },
+    { name = "ninja" },
+    { name = "numba" },
+    { name = "numpy" },
+    { name = "nvidia-cudnn-frontend" },
+    { name = "nvidia-cutlass-dsl" },
+    { name = "nvtx" },
+    { name = "openai" },
+    { name = "opencv-python-headless" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions-ai" },
+    { name = "oss-harmony" },
+    { name = "outlines-core" },
+    { name = "partial-json-parser" },
+    { name = "pillow" },
+    { name = "prometheus-client" },
+    { name = "prometheus-fastapi-instrumentator" },
+    { name = "protobuf" },
+    { name = "psutil" },
+    { name = "py-cpuinfo" },
+    { name = "pybase64" },
+    { name = "pydantic" },
+    { name = "pynvvideocodec" },
+    { name = "python-json-logger" },
+    { name = "pyyaml" },
+    { name = "pyzmq" },
+    { name = "quack-kernels" },
+    { name = "regex" },
+    { name = "requests" },
+    { name = "safetensors" },
+    { name = "sentencepiece" },
+    { name = "setproctitle" },
+    { name = "starlette" },
+    { name = "tiktoken" },
+    { name = "tilelang" },
+    { name = "tokenizers" },
+    { name = "tokenspeed-mla" },
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchcodec" },
+    { name = "torchvision" },
+    { name = "tqdm" },
+    { name = "transformers" },
+    { name = "typing-extensions" },
+    { name = "watchfiles" },
+    { name = "xgrammar" },
+]
+wheels = [
+    { path = "vllm-0.31.0+cu129-cp38-abi3-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "wasabi"
+version = "1.1.3"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "wasabi-1.1.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "watchfiles"
+version = "1.3.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "anyio" },
+]
+wheels = [
+    { path = "watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.9.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "wcwidth-0.9.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl" },
+]
+
+[[package]]
+name = "weasel"
+version = "1.0.0"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "cloudpathlib" },
+    { name = "confection" },
+    { name = "httpx" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "smart-open" },
+    { name = "srsly" },
+    { name = "typer" },
+    { name = "wasabi" },
+]
+wheels = [
+    { path = "weasel-1.0.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "websockets"
+version = "17.2"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "websockets-17.2-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "wrapt"
+version = "2.5.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "wrapt-2.5.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl" },
+]
+
+[[package]]
+name = "xgrammar"
+version = "0.2.7"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "apache-tvm-ffi" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "torch" },
+    { name = "transformers" },
+    { name = "triton" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "xgrammar-0.2.7-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "yarl"
+version = "1.25.1"
+source = { registry = ".cache/offline/wheels" }
+dependencies = [
+    { name = "idna" },
+    { name = "multidict" },
+    { name = "propcache" },
+]
+wheels = [
+    { path = "yarl-1.25.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "z3-solver"
+version = "4.15.4.0"
+source = { registry = ".cache/offline/wheels" }
+wheels = [
+    { path = "z3_solver-4.15.4.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]

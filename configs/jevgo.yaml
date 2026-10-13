@@ -1,0 +1,39 @@
+# Reserved configuration only; this setup does not implement or run training.
+learning_mode: none
+allowed_learning_modes: [none, value_only, policy_only, joint]
+
+backbones:
+  jev_27b:
+    repository: autotrust/JEV-27B
+    revision: 14b425269ed24452e0a5ad5a8f3e51d139647a88
+    base_model: Qwen3.8-27B
+    environment: jevgo
+    local_directory: models/JEV-27B
+    weights_downloaded: false
+  jev_27b_vl:
+    repository: autotrust/JEV-27B-VL
+    revision: da7a40b6450584e5843fab57bb4d80e092b377e0
+    base_model: Qwen3.8-27B
+    environment: jevgo
+    local_directory: models/JEV-27B-VL
+    max_num_seqs: 8
+    weights_downloaded: false
+  jev_9b:
+    repository: autotrust/JEV-9B
+    revision: 7ac669b8fb476ba926491e3d1c39f9330d68dbed
+    base_model: Qwen3.5-9B
+    environment: jevgo
+    local_directory: models/JEV-9B
+    weights_downloaded: false
+  semif:
+    repository: https://github.com/TheoLeeCJ/SemIf-OpenJev
+    revision: 23cf1f39fc9534fe81437200959b6dfc7106e45a
+    environment: jevgo
+    scoring: frozen_qwen_logits
+    weights_downloaded: false
+
+benchmarks:
+  minigrid: {environment: jevgo}
+  alfworld: {environment: jevgo, data_directory: data/alfworld}
+  scienceworld: {environment: jevgo, java_major: 11}
+  discoveryworld: {environment: jevgo}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "JevGO 发布目录规范"
+  short_description: "区分 JevGO 发布文件与开发测试，保持最终交付目录精简且可运行"
+  default_prompt: "请使用 $jevgo-release-layout 整理 JevGO 的发布文件与开发临时文件，并验证发布入口不依赖开发目录。"
