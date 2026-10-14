@@ -13,17 +13,23 @@ def spec():
             "methods": ["B0", "B1", "B2", "B3"], "ablations": ["full", "no_stop_judge"]}
 
 
-def artifact(path, payload, success=True):
+def artifact(path, payload, success=True, *, judge_identities=(), judge_calls=None, validation_level="cpu_fixture"):
     path.mkdir()
     events = JSONLEventStore(path / "events.jsonl")
     ledger = BudgetLedger(BudgetLimits.model_validate(payload["run"]["budget"]), event_store=events)
     ledger.record(Usage(env_steps=2, replay_steps=1), source="env", phase="replay")
+    calls = len(judge_identities) if judge_calls is None else judge_calls
+    if calls:
+        ledger.record(Usage(judge_calls=calls, model_requests=calls), source="fixture.judge")
+    for identity in judge_identities:
+        payload_identity = {} if identity is None else {"identity": identity}
+        events.append(EventRecord(event_type="judge", payload={"role": "candidate", **payload_identity}))
     episode = EpisodeSpec.model_validate(payload["episode"])
     config = RunConfig.model_validate(payload["run"])
     state = ResearchState(episode=episode, observation=Observation(text="result"), success=success)
     result = RunResult(episode=episode, config=config, final_state=state,
         termination_reason=TerminationReason.SUCCESS if success else TerminationReason.BUDGET_EXHAUSTED,
-        usage=ledger.used, metadata={"validation_level": "cpu_fixture", "generator": {"backend": "fixture", "model": "fixture", "revision": "v1", "adapter": None}})
+        usage=ledger.used, metadata={"validation_level": validation_level, "generator": {"backend": "fixture", "model": "fixture", "revision": "v1", "adapter": None}})
     (path / "ledger.json").write_text(json.dumps(ledger.summary()))
     (path / "result.json").write_text(result.model_dump_json())
 
@@ -172,3 +178,78 @@ def test_finite_instrumented_wall_budget_excludes_fair_comparison(tmp_path, wall
     assert comparison["fair_comparison_eligible"] is eligible
     assert "not end-to-end elapsed time" in report["interpretation"]
     assert "coverage differs between B0/B1 and MCTS" in report["interpretation"]
+
+
+AUTOTRUST_JUDGE = {"backend": "autotrust", "model": "autotrust/JEV-9B", "revision": "checkpoint-v1", "adapter": "jev-decision"}
+
+
+def judged_matrix(tmp_path, *, identities, calls=None, validation_level="real_model_attempt"):
+    cfg = spec()
+    cfg.update(methods=["B0", "B3"], seeds=[0], ablations=["full"])
+    path = run_matrix(cfg, output_dir=tmp_path / "judged", assets_root=tmp_path)
+    manifest = json.loads(path.read_text())
+    for entry in manifest["runs"]:
+        active = entry["payload"]["run"]["method"] == "B3"
+        directory = Path(entry["directory"])
+        artifact(directory, entry["payload"], judge_identities=identities if active else (),
+                 judge_calls=calls if active else 0, validation_level=validation_level)
+        # Shared-backend metadata is intentionally stale: scoring events must win.
+        result = json.loads((directory / "result.json").read_text())
+        result["metadata"]["judge"] = {**AUTOTRUST_JUDGE, "adapter": None}
+        (directory / "result.json").write_text(json.dumps(result))
+        entry["status"] = "finished"
+    path.write_text(json.dumps(manifest))
+    return path
+
+
+@pytest.mark.parametrize("identity,validation_level", [
+    (AUTOTRUST_JUDGE, "real_model_attempt"),
+    ({"backend": "semif", "model": "Qwen/Qwen3.5-4B", "revision": "model-v2", "adapter": None}, "real_model_attempt"),
+    ({"backend": "deterministic_fixture", "model": "script-v1", "revision": None, "adapter": None}, "cpu_fixture"),
+])
+def test_scoring_response_identity_overrides_shared_backend_metadata(tmp_path, identity, validation_level):
+    path = judged_matrix(tmp_path, identities=[identity], validation_level=validation_level)
+    report = summarize(path)
+    groups = {group["method"]: group for group in report["groups"]}
+    assert groups["B0"]["observed_judge_identities"] == []
+    assert groups["B0"]["rows"][0]["judge_identity"] is None
+    assert groups["B3"]["observed_judge_identities"] == [identity]
+    assert groups["B3"]["rows"][0]["judge_identity"] == identity
+    assert all(group["judge_identity_complete_runs"] == 1 for group in groups.values())
+    comparison = report["comparisons"][0]
+    assert comparison["all_active_judge_identities_known"]
+    assert comparison["consistent_active_judge"]
+    assert comparison["fair_comparison_eligible"]
+
+
+@pytest.mark.parametrize("identities,calls", [
+    ([], 1),  # A failed call has no scoring response identity.
+    ([None], 1),
+    ([{key: value for key, value in AUTOTRUST_JUDGE.items() if key != "adapter"}], 1),
+    ([{key: value for key, value in AUTOTRUST_JUDGE.items() if key != "revision"}], 1),
+    ([{**AUTOTRUST_JUDGE, "revision": None}], 1),
+    ([{**AUTOTRUST_JUDGE, "model": ""}], 1),
+    ([AUTOTRUST_JUDGE], 2),
+    ([AUTOTRUST_JUDGE], 0),
+])
+def test_missing_or_unaccounted_judge_identity_excludes_fair_comparison(tmp_path, identities, calls):
+    report = summarize(judged_matrix(tmp_path, identities=identities, calls=calls))
+    group = next(group for group in report["groups"] if group["method"] == "B3")
+    assert group["judge_identity_complete_runs"] == 0
+    assert group["rows"][0]["judge_identity_issues"]
+    comparison = report["comparisons"][0]
+    assert comparison["all_runs_finished_with_known_cost"]
+    assert not comparison["all_active_judge_identities_known"]
+    assert not comparison["consistent_active_judge"]
+    assert not comparison["fair_comparison_eligible"]
+
+
+def test_mixed_scoring_adapters_remain_visible_and_ineligible(tmp_path):
+    identities = [AUTOTRUST_JUDGE, {**AUTOTRUST_JUDGE, "adapter": "other-decision"}]
+    report = summarize(judged_matrix(tmp_path, identities=identities))
+    group = next(group for group in report["groups"] if group["method"] == "B3")
+    assert group["observed_judge_identities"] == sorted(identities, key=lambda item: json.dumps(item, sort_keys=True))
+    assert group["rows"][0]["judge_identity"] is None
+    assert report["comparisons"][0]["all_active_judge_identities_known"]
+    assert not report["comparisons"][0]["consistent_active_judge"]
+    assert not report["comparisons"][0]["fair_comparison_eligible"]

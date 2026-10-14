@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from collections.abc import Mapping
 from copy import deepcopy
 import hashlib
 import json
@@ -163,7 +164,35 @@ def audit_run(directory: Path | str) -> dict:
             "cost_complete": complete, "within_budget": not over_budget and complete,
             "recomputed_over_budget": over_budget,
             "declared_over_budget_consistent": set(over_budget) == set(ledger["over_budget"]),
-            "committed_steps": len(committed)}
+            "committed_steps": len(committed), **_audit_judge_identities(result, events)}
+
+
+def _audit_judge_identities(result: RunResult, events) -> dict:
+    """Use identities returned by scoring calls, not the shared backend default.
+
+    A backend can generate without an adapter and score with one. Missing or
+    failed scoring responses cannot establish the identity of every active call.
+    Explicitly unversioned CPU fixtures remain valid implementation evidence.
+    """
+    calls = [event for event in events if event.event_type == "judge"]
+    identities, issues = set(), []
+    if len(calls) != result.usage.judge_calls:
+        issues.append("judge_response_count_differs_from_charged_calls")
+    fixture = result.metadata.get("validation_level") == "cpu_fixture"
+    fields = ("backend", "model", "revision", "adapter")
+    for index, event in enumerate(calls):
+        identity = event.payload.get("identity")
+        if (not isinstance(identity, Mapping) or any(key not in identity for key in fields)
+                or any(not isinstance(identity[key], str) or not identity[key] for key in ("backend", "model"))
+                or not (isinstance(identity["revision"], str) and identity["revision"]
+                        or fixture and identity["revision"] is None)
+                or identity["adapter"] is not None and (not isinstance(identity["adapter"], str) or not identity["adapter"])):
+            issues.append(f"missing_or_invalid_judge_identity:{index}")
+            continue
+        identities.add(_canonical({key: identity[key] for key in fields}))
+    return {"judge_identities": [json.loads(value) for value in sorted(identities)],
+            "judge_identity_complete": not issues, "judge_identity_issues": issues,
+            "judge_response_count": len(calls)}
 
 
 def _serialize_payload(payload) -> str:
@@ -208,9 +237,8 @@ def summarize(manifest_path: Path | str) -> dict:
                     within_budget_success=result.success and audited["within_budget"],
                     termination_reason=result.termination_reason.value,
                     validation_level=result.metadata.get("validation_level", "unclassified"),
-                    judge_identity=({k: (result.metadata.get("judge") or {}).get(k)
-                                     for k in ("backend", "model", "revision", "adapter")}
-                                    if result.usage.judge_calls else None),
+                    judge_identity=(audited["judge_identities"][0]
+                                    if len(audited["judge_identities"]) == 1 else None),
                     generator_identity={k: result.metadata.get("generator", {}).get(k)
                                         for k in ("backend", "model", "revision", "adapter")})
             except (ValueError, OSError, KeyError, TypeError) as exc:
@@ -234,7 +262,8 @@ def summarize(manifest_path: Path | str) -> dict:
             "observed_generator_identities": [json.loads(x) for x in sorted({
                 _canonical(r["generator_identity"]) for r in rows if "generator_identity" in r})],
             "observed_judge_identities": [json.loads(x) for x in sorted({
-                _canonical(r["judge_identity"]) for r in rows if r.get("judge_identity")})],
+                _canonical(identity) for r in rows for identity in r.get("judge_identities", [])})],
+            "judge_identity_complete_runs": sum(r.get("judge_identity_complete", False) for r in rows),
             "validation_levels": sorted({r.get("validation_level", "unverified") for r in rows}),
             "rows": rows})
     # A fair pair requires the same complete task/seed/permissions set as well as
@@ -254,8 +283,9 @@ def summarize(manifest_path: Path | str) -> dict:
         generators = [identity for g in choices for identity in g["observed_generator_identities"]]
         same_generator = (bool(generators) and all(identity.get("model") for identity in generators)
                           and len({_canonical(identity) for identity in generators}) == 1)
-        same_judge = len({_canonical(identity) for g in choices
-                          for identity in g["observed_judge_identities"]}) <= 1
+        judge_identities_complete = all(g["judge_identity_complete_runs"] == g["planned"] for g in choices)
+        same_judge = (judge_identities_complete and len({_canonical(identity) for g in choices
+                          for identity in g["observed_judge_identities"]}) <= 1)
         same_tasks = all(s == sets[0] for s in sets)
         complete = all(g["finished"] == g["planned"] == g["cost_complete_runs"] for g in choices)
         condition = json.loads(key)
@@ -264,6 +294,7 @@ def summarize(manifest_path: Path | str) -> dict:
             "methods": [g["method"] + "/" + g["ablation"] for g in choices],
             "same_task_conditions": same_tasks, "consistent_observed_generator": bool(same_generator),
             "consistent_active_judge": same_judge,
+            "all_active_judge_identities_known": judge_identities_complete,
             "all_runs_finished_with_known_cost": complete,
             "finite_wall_seconds_budget": finite_wall_seconds_budget,
             "fair_comparison_eligible": (len(choices) >= 2 and bool(same_generator) and same_judge
@@ -272,6 +303,8 @@ def summarize(manifest_path: Path | str) -> dict:
     return {"schema_version": 1, "groups": summary, "comparisons": comparisons,
             "interpretation": "CPU fixture results validate implementation, not pretrained model quality. "
                               "Separate models/modalities/environments; report missing, failed and unknown-cost runs. "
+                              "Judge identities come from scoring response events; missing or mixed identities "
+                              "cannot establish a fair comparison. "
                               "Usage.wall_seconds measures instrumented operations plus deduplicated MCTS overhead, "
                               "not end-to-end elapsed time; coverage differs between B0/B1 and MCTS. "
                               "Finite wall_seconds budgets are excluded from fair comparisons because equal limits "
