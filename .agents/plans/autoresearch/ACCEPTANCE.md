@@ -43,7 +43,22 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO .venv/bin/python -B -m pytest 
 | 评测/审计 | 9 |
 | 发布归档 | 10 |
 
-研究提示稳定别名及失败请求追踪的最终补充验收将单独记录，避免把旧基线测试冒充新代码的结果。
+## 最终补丁回归
+
+最终受测代码基线 `147b97305f926a95a6ad91446514120c36912ca4`：**72 passed，33.43 秒，退出码 0**，无跳过。包含研究状态 15、运行器 13、CLI 22、评测 12、发布归档 10 项，验证稳定证据/图片别名、调用前请求日志、明确计时范围及有限时间预算的比较限制。72 项与上面的 277 项有重叠，不能相加作为独立测试数；其他模块代码在本轮补丁中未改动。
+
+```bash
+cd /mnt/nas-tianwen/home/ssy/JevGO
+set -o pipefail
+JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO .venv/bin/python -B -m pytest -q -p no:cacheprovider \
+  --junitxml=.dev/artifacts/P12/final-followup-junit.xml \
+  .dev/tests/autoresearch/test_research.py .dev/tests/autoresearch/test_runner.py \
+  .dev/tests/autoresearch/test_cli.py .dev/tests/autoresearch/test_evaluation.py \
+  .dev/tests/autoresearch/test_release.py \
+  2>&1 | tee .dev/artifacts/P12/final-followup-pytest.txt
+```
+
+证据：[最终补丁 JUnit](../../../.dev/artifacts/P12/final-followup-junit.xml)、[完整输出](../../../.dev/artifacts/P12/final-followup-pytest.txt)、[最终代码发布验收](../../../.dev/artifacts/P12/release-147b97305f92-nn24dwxz/acceptance.json)。发布归档的 B0/B3 真实 MiniGrid 闭环再次通过；B3 结果包含明确的计时范围 metadata。
 
 ## 对比矩阵与成本审计
 
@@ -80,3 +95,11 @@ export JEVGO_PY=/mnt/nas-tianwen/home/ssy/JevGO/.venv/bin/python
 - DiscoveryWorld：原实例与新进程的私有状态/RNG 不一致，目前只允许 B0/B1；B2/B3 明确报告不支持。恢复成功路径的协议 fixture 不代表真实场景恢复通过。
 - 真实模型效果：需在固定任务、seed、观测条件和预算上运行矩阵、消融及成本审计；当前无提升结论。
 - 训练、SemIf 缓存优化、通用命令行实验环境属于后续任务池。
+
+最终代码还对已有 16 次运行重新执行纯审计汇总（未重新执行模型或环境），退出码 0，结果仍为 16/16 预算内客观成功；没有有限时间预算，比较条件成立。证据：[最终审计汇总](../../../.dev/artifacts/P12/cpu-summary-reviewed.json)。命令：
+
+```bash
+.venv/bin/python -B -m jevgo.evaluation summarize \
+  --manifest .dev/worktrees/P11/.dev/artifacts/P11/cpu-matrix/manifest.json \
+  --output .dev/artifacts/P12/cpu-summary-reviewed.json
+```

@@ -20,7 +20,7 @@
 | [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | cpu_verified |
 | [P10 DiscoveryWorld适配](P10-discoveryworld.md) | AR-0/4 | P01 | cpu_verified_online_only |
 | [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | cpu_verified_fixture_only |
-| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | final_regression_running |
+| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | cpu_verified_gpu_handoff_ready |
 
 ## 依赖与调度
 P00 → P01；P02/P03/P04/P05/P06/P08/P09/P10随后可独立开发。P07等待P02至P06；P11等待P07；P12等待P08至P11及传递依赖。
@@ -46,7 +46,7 @@ B0顺序LLM；B1 JEV重排贪心；B2无JEV MCTS；B3完整方法。候选/工�
 当前交付前两层及后两层工具/交接。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
 
 ## 外部交接
-任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档在P12用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
+任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档已用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
 训练、SemIf缓存优化、通用命令行实验环境进入后续任务池。
 
 具体交付记录：[集成验收](ACCEPTANCE.md)、[GPU独立交接](GPU-HANDOFF.md)、[P07a并行子任务](P07a-cli.md)。
