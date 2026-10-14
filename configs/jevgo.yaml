@@ -2,38 +2,44 @@
 learning_mode: none
 allowed_learning_modes: [none, value_only, policy_only, joint]
 
+# Project-relative paths; scripts/download_weights.sh verify is the source of truth.
+weights_manifest: configs/weights-manifest.json
+
 backbones:
   jev_27b:
     repository: autotrust/JEV-27B
     revision: 14b425269ed24452e0a5ad5a8f3e51d139647a88
     base_model: Qwen3.8-27B
-    environment: jevgo
+    environment: JevGO
     local_directory: models/JEV-27B
-    weights_downloaded: false
+    weights_downloaded: true
   jev_27b_vl:
     repository: autotrust/JEV-27B-VL
     revision: da7a40b6450584e5843fab57bb4d80e092b377e0
     base_model: Qwen3.8-27B
-    environment: jevgo
+    environment: JevGO
     local_directory: models/JEV-27B-VL
     max_num_seqs: 8
-    weights_downloaded: false
+    weights_downloaded: true
   jev_9b:
     repository: autotrust/JEV-9B
     revision: 7ac669b8fb476ba926491e3d1c39f9330d68dbed
     base_model: Qwen3.5-9B
-    environment: jevgo
+    environment: JevGO
     local_directory: models/JEV-9B
-    weights_downloaded: false
+    weights_downloaded: true
   semif:
     repository: https://github.com/TheoLeeCJ/SemIf-OpenJev
     revision: 23cf1f39fc9534fe81437200959b6dfc7106e45a
-    environment: jevgo
+    environment: JevGO
     scoring: frozen_qwen_logits
-    weights_downloaded: false
+    base_model: Qwen/Qwen3.5-4B
+    model_revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+    local_directory: models/Qwen3.5-4B
+    weights_downloaded: true
 
 benchmarks:
-  minigrid: {environment: jevgo}
-  alfworld: {environment: jevgo, data_directory: data/alfworld}
-  scienceworld: {environment: jevgo, java_major: 11}
-  discoveryworld: {environment: jevgo}
+  minigrid: {environment: JevGO}
+  alfworld: {environment: JevGO, data_directory: data/alfworld}
+  scienceworld: {environment: JevGO, java_major: 11}
+  discoveryworld: {environment: JevGO}

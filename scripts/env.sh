@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One offline uv environment; old component names remain aliases.
 set -euo pipefail
-JEVGO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+JEVGO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 export UV_CACHE_DIR="$JEVGO_ROOT/.cache/uv"
 export UV_PYTHON_INSTALL_DIR="$JEVGO_ROOT/.tools/python"
 export UV_PYTHON_BIN_DIR="$JEVGO_ROOT/.tools/bin"
@@ -37,8 +37,8 @@ if [[ ! -x "$uv_bin" || ! -x "$python_bin" ]]; then
 fi
 name="${1:-}"
 case "$name" in
-    jevgo|core|autotrust|semif|minigrid|alfworld|scienceworld|discoveryworld) shift ;;
-    *) echo 'Usage: bash scripts/env.sh {jevgo|core|autotrust|semif|minigrid|alfworld|scienceworld|discoveryworld} {--sync|--check|--uv UV_ARGS...|command [args...]}' >&2; exit 2 ;;
+    JevGO|jevgo|core|autotrust|semif|minigrid|alfworld|scienceworld|discoveryworld) shift ;;
+    *) echo 'Usage: bash scripts/env.sh {JevGO|jevgo|core|autotrust|semif|minigrid|alfworld|scienceworld|discoveryworld} {--sync|--check|--uv UV_ARGS...|command [args...]}' >&2; exit 2 ;;
 esac
 cd "$JEVGO_ROOT"
 unset UV_PROJECT_ENVIRONMENT VIRTUAL_ENV

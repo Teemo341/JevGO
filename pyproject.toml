@@ -1,5 +1,5 @@
 [project]
-name = "jevgo"
+name = "JevGO"
 version = "0.1.0"
 description = "Unified offline-capable JevGO inference and benchmark environment"
 readme = "README.md"

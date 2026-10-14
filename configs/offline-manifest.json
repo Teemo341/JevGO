@@ -21775,13 +21775,13 @@
     },
     {
       "path": "configs/jevgo.yaml",
-      "size": 1259,
-      "sha256": "b6e06af803990048ad659d168b4c5bb93e9027847c5199ba54a844b2b108315f"
+      "size": 1521,
+      "sha256": "b674af792358ab3e98458db767562bc36b1a36e9599a625be7b3b7d2df308b37"
     },
     {
       "path": "pyproject.toml",
       "size": 1033,
-      "sha256": "dccb64be50bdde74e963f9ec87a6aae17d2b70e4a4ce71be91d7dd620f9214cc"
+      "sha256": "5b6139a431229b50b4b0884f90e88b47e655d5244da0e260d601625ca0ed0b25"
     },
     {
       "path": "uv.lock",
