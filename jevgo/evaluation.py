@@ -208,6 +208,9 @@ def summarize(manifest_path: Path | str) -> dict:
                     within_budget_success=result.success and audited["within_budget"],
                     termination_reason=result.termination_reason.value,
                     validation_level=result.metadata.get("validation_level", "unclassified"),
+                    judge_identity=({k: (result.metadata.get("judge") or {}).get(k)
+                                     for k in ("backend", "model", "revision", "adapter")}
+                                    if result.usage.judge_calls else None),
                     generator_identity={k: result.metadata.get("generator", {}).get(k)
                                         for k in ("backend", "model", "revision", "adapter")})
             except (ValueError, OSError, KeyError, TypeError) as exc:
@@ -230,6 +233,8 @@ def summarize(manifest_path: Path | str) -> dict:
             "cost_complete_runs": sum(r["cost_complete"] for r in rows),
             "observed_generator_identities": [json.loads(x) for x in sorted({
                 _canonical(r["generator_identity"]) for r in rows if "generator_identity" in r})],
+            "observed_judge_identities": [json.loads(x) for x in sorted({
+                _canonical(r["judge_identity"]) for r in rows if r.get("judge_identity")})],
             "validation_levels": sorted({r.get("validation_level", "unverified") for r in rows}),
             "rows": rows})
     # A fair pair requires the same complete task/seed/permissions set as well as
@@ -238,17 +243,28 @@ def summarize(manifest_path: Path | str) -> dict:
     for group in summary:
         condition = {k: group[k] for k in ("environment", "model", "modality", "split", "budget",
                      "commit_reserve", "max_steps", "options", "search_parameters")}
+        # Different actual generator revisions/adapters cannot share a comparison.
+        # Mixed identities within one method remain visible and ineligible.
+        condition["observed_generator_identities"] = group["observed_generator_identities"]
         comparison_sets[_canonical(condition)].append(group)
     comparisons = []
     for key, choices in comparison_sets.items():
         sets = [{_canonical({k: row[k] for k in ("task", "seed", "episode_options")}) for row in g["rows"]}
                 for g in choices]
+        generators = [identity for g in choices for identity in g["observed_generator_identities"]]
+        same_generator = (bool(generators) and all(identity.get("model") for identity in generators)
+                          and len({_canonical(identity) for identity in generators}) == 1)
+        same_judge = len({_canonical(identity) for g in choices
+                          for identity in g["observed_judge_identities"]}) <= 1
+        same_tasks = all(s == sets[0] for s in sets)
+        complete = all(g["finished"] == g["planned"] == g["cost_complete_runs"] for g in choices)
         comparisons.append({"condition": json.loads(key),
             "methods": [g["method"] + "/" + g["ablation"] for g in choices],
-            "same_task_conditions": all(s == sets[0] for s in sets),
-            "consistent_observed_generator": len({_canonical(identity)
-                for g in choices for identity in g["observed_generator_identities"]}) == 1,
-            "all_runs_finished_with_known_cost": all(g["finished"] == g["planned"] == g["cost_complete_runs"] for g in choices)})
+            "same_task_conditions": same_tasks, "consistent_observed_generator": bool(same_generator),
+            "consistent_active_judge": same_judge,
+            "all_runs_finished_with_known_cost": complete,
+            "fair_comparison_eligible": len(choices) >= 2 and bool(same_generator) and same_judge and same_tasks and complete})
+
     return {"schema_version": 1, "groups": summary, "comparisons": comparisons,
             "interpretation": "CPU fixture results validate implementation, not pretrained model quality. "
                               "Separate models/modalities/environments; report missing, failed and unknown-cost runs."}

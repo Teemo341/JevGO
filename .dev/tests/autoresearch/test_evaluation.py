@@ -23,7 +23,7 @@ def artifact(path, payload, success=True):
     state = ResearchState(episode=episode, observation=Observation(text="result"), success=success)
     result = RunResult(episode=episode, config=config, final_state=state,
         termination_reason=TerminationReason.SUCCESS if success else TerminationReason.BUDGET_EXHAUSTED,
-        usage=ledger.used, metadata={"validation_level": "cpu_fixture"})
+        usage=ledger.used, metadata={"validation_level": "cpu_fixture", "generator": {"backend": "fixture", "model": "fixture", "revision": "v1", "adapter": None}})
     (path / "ledger.json").write_text(json.dumps(ledger.summary()))
     (path / "result.json").write_text(result.model_dump_json())
 
@@ -127,3 +127,21 @@ def test_overage_is_recomputed_and_unknown_cost_cannot_count_within_budget(tmp_p
     audited = audit_run(path)
     assert audited["result"].success and not audited["cost_complete"]
     assert not audited["within_budget"]
+
+
+def test_actual_backbone_revision_mismatch_splits_comparisons(tmp_path):
+    cfg = spec()
+    cfg.update(methods=["B0", "B1"], seeds=[0], ablations=["full"])
+    manifest_path = run_matrix(cfg, output_dir=tmp_path / "identities", assets_root=tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    for index, entry in enumerate(manifest["runs"]):
+        path = Path(entry["directory"])
+        artifact(path, entry["payload"])
+        entry["status"] = "finished"
+        result = json.loads((path / "result.json").read_text())
+        result["metadata"]["generator"]["revision"] = "revision-" + str(index)
+        (path / "result.json").write_text(json.dumps(result))
+    manifest_path.write_text(json.dumps(manifest))
+    report = summarize(manifest_path)
+    assert len(report["comparisons"]) == 2
+    assert not any(c["fair_comparison_eligible"] for c in report["comparisons"])
