@@ -82,9 +82,11 @@ def public_state(state: ResearchState, *, use_memory: bool = True) -> dict:
     """Whitelist model-visible data; raw scorecards/info and snapshots stay private."""
     selected = set(state.working_memory) if use_memory else set()
     aliases = {e.evidence_id: f"e{i}" for i, e in enumerate(state.evidence)}
+    observation = state.observation.model_dump(mode="json")
+    observation["image_paths"] = [f"image_{i}" for i in range(len(state.observation.image_paths))]
     return {
         "task": state.episode.task, "success_criteria": state.episode.success_criteria,
-        "observation": state.observation.model_dump(mode="json"),
+        "observation": observation,
         "actions": [a.model_dump(mode="json") for a in state.actions],
         "memory": [
             {"id": aliases[e.evidence_id], "kind": e.kind.value, "content": e.content,
@@ -124,13 +126,14 @@ class ResearchPolicy:
             role=role, context=instruction + "\nPublic state:\n" + self._context(state),
             items=items, image_paths=state.observation.image_paths,
         )
+        self._event("judge_request", state, request=request.model_dump(mode="json"),
+                    phase=UsagePhase(phase).value)
         response = self.judge.score(request, ledger=ledger, phase=phase)
         if len(response.scores) != len(items):
             raise ModelFailure("Judge scores must correspond one-to-one with items")
         if any(score < 0 for score in response.scores):
             raise ModelFailure("Research policy requires nonnegative preference scores")
         self._event("judge", state, role=role.value, items=list(items),
-                    request=request.model_dump(mode="json"),
                     scores=list(response.scores), identity=response.identity.model_dump(mode="json"),
                     metadata=response.metadata)
         return response.scores
@@ -157,6 +160,8 @@ class ResearchPolicy:
                 image_paths=state.observation.image_paths,
                 max_new_tokens=int(self.config.options.get("max_new_tokens", 256)),
             )
+            self._event("generation_request", state, attempt=attempt,
+                        request=request.model_dump(mode="json"), phase=UsagePhase(phase).value)
             response = self.generator.generate(request, ledger=ledger, phase=phase)
             if len(response.texts) != n:
                 raise ModelFailure("Generation response count differs from requested samples")
@@ -180,7 +185,6 @@ class ResearchPolicy:
                 except (ValueError, TypeError, ValidationError) as exc:
                     errors.append(str(exc))
             self._event("proposal_samples", state, attempt=attempt, texts=list(response.texts),
-                        request=request.model_dump(mode="json"),
                         errors=list(errors), identity=response.identity.model_dump(mode="json"))
             if grouped:
                 break
