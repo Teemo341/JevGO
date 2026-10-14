@@ -31,7 +31,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 VLLM_NO_USAGE_STATS=1 TOKENIZERS_
 mkdir -p .dev/artifacts
 export JEVGO_GPU_OUT="$(mktemp -d "$JEVGO_ASSETS_ROOT/.dev/artifacts/gpu-XXXXXXXX")"
 git rev-parse HEAD > "$JEVGO_GPU_OUT/commit.txt"
-nvidia-smi -q > "$JEVGO_GPU_OUT/hardware.txt"
+nvidia-smi -q > "$JEVGO_GPU_OUT/hardware.txt" 2>&1
 ```
 
 若硬件命令失败，保存错误及驱动/GPU可见性，停止依赖 GPU 的步骤。不要把此情况写成算法失败。
@@ -87,7 +87,7 @@ CUDA_VISIBLE_DEVICES=0 "$JEVGO_PY" -B -m jevgo model-check \
   --output "$JEVGO_GPU_OUT/semif-protocol"
 ```
 
-SemIf direct scorer 的 output_tokens 为零是正常现象；输入 tokens、model_requests 和耗时必须完整。生成路径仍有输出 tokens。
+SemIf direct scorer 的 output_tokens 为零是正常现象；输入 tokens 和 model_requests 必须完整，已插桩操作耗时必须有记录。生成路径仍有输出 tokens。`wall_seconds` 不是端到端耗时，不据此比较四方法的总速度或等时间预算；计时范围见正式使用说明。
 
 为 VL 生成一张真实公开观测（CPU 环境操作，图片保留到 worker 关闭后）：
 

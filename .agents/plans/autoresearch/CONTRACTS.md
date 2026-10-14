@@ -62,7 +62,7 @@ class JudgeBackend(Protocol):
 
 ## 账本与预留
 
-`Usage` 和 `BudgetLimits` 的字段相同：`env_steps, env_resets, env_snapshots, env_restores, env_observations, replay_steps, generation_calls, judge_calls, model_requests, input_tokens, output_tokens, rollouts, wall_seconds`。Usage 默认零，整数计数严格非负；Limits 默认 None（无限），零表示禁止该资源。wall_seconds 是实际操作耗时，顺序执行时累计，不重复把外层总时长加入内部操作耗时。
+`Usage` 和 `BudgetLimits` 的字段相同：`env_steps, env_resets, env_snapshots, env_restores, env_observations, replay_steps, generation_calls, judge_calls, model_requests, input_tokens, output_tokens, rollouts, wall_seconds`。Usage 默认零，整数计数严格非负；Limits 默认 None（无限），零表示禁止该资源。wall_seconds 是 adapter/backend 已插桩操作及去重后的 MCTS 搜索开销累计，不重复计时。它不完整覆盖模型加载、编排、预处理、日志及清理，并非端到端时延；不同方法的外层覆盖尚不一致。RunResult.metadata.wall_seconds_scope=`instrumented_operations_plus_search_overhead` 明确范围。有限 wall_seconds 可用于运行过程的操作累计预算，但当前不能作为公平的总时间预算，评测汇总对此明确标记不可比较。
 
 ```python
 ledger = BudgetLedger(limits=None, *, commit_reserve=None, event_store=None)

@@ -39,8 +39,8 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 ## 当前执行记录
 
 - 基线：`7792aeb; 后集成 P07a`。
-- 交付 commit：`27fc806 +0897d7a +5c40457 +ecd8abe`。
-- 验收：9 项分析测试；16 个两 seed/四方法/消融 CPU 运行及成本重算通过。
+- 交付 commit：`27fc806 +0897d7a +5c40457 +ecd8abe +0dba698`。
+- 验收：最终 12 项分析测试（含有限时间预算的不可比较标识）；16 个两 seed/四方法/消融 CPU 运行及成本重算通过。
 - 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 - 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。
 - 纯分析以已完成 P07 runner 为基线；矩阵执行等待 P07a 合入后再验收。正式 GPU 矩阵按模型单独启动，不同时装载四模型。

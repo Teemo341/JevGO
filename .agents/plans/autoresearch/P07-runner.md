@@ -39,7 +39,7 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 ## 当前执行记录
 
 - 基线：`8e35eb6`。
-- 交付 commit：`7792aeb + 1ac0c9b; CLI dd0d962; modality b1f9866`。
+- 交付 commit：`7792aeb + 1ac0c9b + 5054651; CLI dd0d962; modality b1f9866`。
 - 验收：13 项运行器及 22 项 CLI 测试；四方法真实 MiniGrid fixture 闭环。
 - 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 - 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。

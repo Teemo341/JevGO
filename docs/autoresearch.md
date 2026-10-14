@@ -16,7 +16,7 @@ JevGO 第一版实现冻结参数的显式研究状态、LLM 候选、JEV 辅助
 
 `--method` 支持 B0（顺序 LLM）、B1（JEV 贪心重排）、B2（无 JEV 的 MCTS）、B3（JEV + MCTS）。示例使用明确标注的 MiniGrid 确定性 fixture；真实模型替换 `--model jev_9b` 等，并提供对应服务 `--base-url`。在独立工作树运行时用共享解释器，并传 `--assets-root /实际资源根目录` 或设置 `JEVGO_ASSETS_ROOT`。
 
-每次运行保存 `config.json`、`versions.json`、`events.jsonl`、`ledger.json`、`result.json`。`result.json` 的 `success` 是环境客观信号；CLI 退出 0 只表示执行正常结束，不能代替读取 success/termination_reason。预算耗尽、环境终止、截断、模型错误分开记录。搜索 transition 和实际 commit 使用不同事件 phase，最终状态只包含提交轨迹证据。
+每次运行保存 `config.json`、`versions.json`、`events.jsonl`、`ledger.json`、`result.json`。`result.json` 的 `final_state.success` 是环境客观信号；CLI 退出 0 只表示执行正常结束，不能代替读取 `final_state.success` 和 `termination_reason`。预算耗尽、环境终止、截断、模型错误分开记录。搜索 transition 和实际 commit 使用不同事件 phase，最终状态只包含提交轨迹证据。公开提示使用稳定的证据别名和图片占位符；原始 ID、真实图像路径及调用前请求均保留在日志中，失败请求也可追溯。
 
 ## 循环及搜索语义
 
@@ -30,7 +30,9 @@ JevGO 第一版实现冻结参数的显式研究状态、LLM 候选、JEV 辅助
 
 默认验收参数为 4 个候选、8 次模拟、树深 4、rollout 深 2、`c_puct=1.5`、`gamma=1`。这些是功能验收参数，并非效果最优设置。
 
-所有分支共享一个单调账本。搜索、真实提交、重放、reset、snapshot、观察刷新、失败模型请求及内部请求均计成本；缓存 observe 不收费。规划前预留恢复根状态、重放前缀、一次提交和后继快照额度。无法事先精确预测的耗时按实际值记录，超额后停止新增工作。
+所有分支共享一个单调账本。搜索、真实提交、重放、reset、snapshot、观察刷新、失败模型请求及内部请求均计成本；缓存 observe 不收费。规划前预留恢复根状态、重放前缀、一次提交和后继快照额度。无法事先精确预测的操作耗时按实际值记录，超额后停止新增工作。
+
+`wall_seconds` 是 adapter/backend 已插桩操作及去重后的 MCTS 搜索开销之和，不完整覆盖模型加载、编排、预处理、日志及清理，并非端到端时延。结果 metadata 的 `wall_seconds_scope` 明确此范围。当前四方法不按它比较总运行速度或等时间预算；配置了有限 `wall_seconds` 的矩阵不会被标为公平比较。正式按时间比较需先统一所有方法的计时边界。
 
 ## 模型
 

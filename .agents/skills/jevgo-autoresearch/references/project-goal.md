@@ -130,3 +130,5 @@ JEV 的“候选合理性”“新发现有用性”“当前任务是否完成�
 - MiniGrid/ALFWorld/ScienceWorld已验相应任务的reset/replay；DiscoveryWorld真实新worker私有RNG不一致，首版仅在线B0/B1，B2/B3明确拒绝。不得私自改变benchmark随机机制来掩盖恢复失败。
 - 评测按实际模型/revision/adapter及模态/任务/权限/预算检查比较；从事件重算成本。费用未知或超额不计已证实的预算内成功，保留客观成功。CPUfixture不作模型效果证据。
 - 实施状态、确切commit、测试及GPU交接统一见 `.agents/plans/autoresearch/`；本长期记忆只保存目标与稳定语义。
+
+首版复现与计时约定：模型提示采用稳定证据别名、图片占位符，实际路径和 ID 仍保留原始事件；模型调用前记录完整请求以覆盖失败。wall_seconds 仅累计已插桩操作与去重搜索开销，不代表端到端时延；有限时间预算暂不构成公平比较条件，正式比较总时间前需统一计时边界。
