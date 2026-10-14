@@ -11,7 +11,7 @@ import yaml
 
 from jevgo.core import (
     BudgetExceeded, BudgetLedger, BudgetLimits, GenerationBackend, GenerationRequest,
-    JudgeBackend, JudgeRequest, ModelFailure, UnsupportedCapability, Usage, UsagePhase,
+    JudgeBackend, JudgeRequest, JSONLEventStore, ModelFailure, UnsupportedCapability, Usage, UsagePhase,
 )
 from jevgo.models.autotrust import AutoTrustBackend
 from jevgo.models.serve_autotrust import build_launch, main
@@ -261,6 +261,37 @@ def test_failure_attempt_unknown_usage_no_retry(assets, failure):
     assert ledger.entries[-1].metadata["usage_complete"] is False
     assert "output_tokens" in ledger.entries[-1].metadata["unknown_usage"]
     assert ledger.entries[-1].metadata["model_requests_is_lower_bound"] is True
+    if failure == "timeout":
+        assert "http_response_body" not in ledger.entries[-1].metadata
+
+
+@pytest.mark.parametrize("status, body", [
+    (400, '{"error":{"message":"3841 input + 256 output exceeds context 4096","type":"BadRequestError"}}'),
+    (502, "<html>upstream unavailable</html>"),
+    (200, "malformed non-JSON response"),
+    (200, '{"error":{"message":"service rejected request"}}'),
+])
+def test_failure_response_body_survives_exception_and_event_log(assets, status, body):
+    attempts = []
+    def handler(request):
+        attempts.append(request)
+        return httpx.Response(status, text=body)
+    events = JSONLEventStore(assets / "failure-events.jsonl")
+    ledger = BudgetLedger(event_store=events)
+    with client_for(handler) as client:
+        with pytest.raises(ModelFailure) as caught:
+            AutoTrustBackend("jev_9b", assets_root=assets, client=client).generate(
+                GenerationRequest(prompt="public state", max_new_tokens=256), ledger=ledger)
+    assert body in str(caught.value) and f"HTTP {status}" in str(caught.value)
+    assert len(attempts) == 1 and ledger.used.generation_calls == 1 and ledger.used.model_requests == 1
+    assert ledger.used.input_tokens == ledger.used.output_tokens == 0
+    failure = ledger.entries[-1]
+    assert failure.failed and failure.metadata["status_code"] == status
+    assert failure.metadata["http_response_body"] == body
+    assert failure.metadata["usage_complete"] is False
+    assert set(failure.metadata["unknown_usage"]) == {"input_tokens", "output_tokens"}
+    recorded = events.read()[-1].payload
+    assert recorded["failed"] and recorded["metadata"]["http_response_body"] == body
 
 
 def test_partial_multi_item_failure_keeps_previous_cost(assets):

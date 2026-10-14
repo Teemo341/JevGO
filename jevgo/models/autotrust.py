@@ -206,10 +206,11 @@ class AutoTrustBackend:
                       metadata={"endpoint": path, "attempt": len(call.requests) + 1})
         call.usage = call.usage + fixed
         started, data, failed = time.monotonic(), None, True
-        status = None
+        status, response_body = None, None
         try:
             response = self._client.post(self.base_url + path, json=payload, timeout=self.timeout)
             status = response.status_code
+            response_body = response.text
             data = response.json()
             response.raise_for_status()
             if not isinstance(data, dict):
@@ -223,12 +224,15 @@ class AutoTrustBackend:
         except Exception as error:
             if isinstance(error, ModelFailure):
                 raise
-            raise ModelFailure(f"AutoTrust {path} failed: {type(error).__name__}: {error}") from error
+            detail = f"; HTTP {status} response body: {response_body}" if response_body is not None else ""
+            raise ModelFailure(f"AutoTrust {path} failed: {type(error).__name__}: {error}{detail}") from error
         finally:
             measured, metadata = self._accounting(data, path == "/v1/decide")
             measured = measured.model_copy(update={"wall_seconds": time.monotonic() - started})
             metadata.update(endpoint=path, status_code=status, failed=failed,
                             input_tokens_upper_bound=input_bound, model_requests_upper_bound=request_bound)
+            if failed and response_body is not None:
+                metadata["http_response_body"] = response_body
             ledger.record(measured, source="autotrust.response", phase=phase,
                           failed=failed, metadata=metadata)
             call.usage = call.usage + measured
