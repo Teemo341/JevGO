@@ -243,3 +243,19 @@ def test_action_success_is_separate_and_observations_are_accountable():
     assert ledger.used.env_observations == 1
     with pytest.raises(BudgetExceeded):
         ledger.charge(Usage(env_observations=1), source="adapter.refresh", phase="commit")
+
+
+def test_exhausted_time_and_existing_overage_reject_before_new_work():
+    for ledger in (BudgetLedger(BudgetLimits(wall_seconds=0)),
+                   BudgetLedger(BudgetLimits(wall_seconds=1))):
+        if ledger.limits.wall_seconds == 1:
+            ledger.record(Usage(wall_seconds=1), source="previous")
+        before = ledger.used
+        with pytest.raises(BudgetExceeded):
+            ledger.charge(Usage(model_requests=1), source="must_not_start")
+        assert ledger.used == before
+    ledger = BudgetLedger(BudgetLimits(output_tokens=0))
+    ledger.record(Usage(output_tokens=1), source="measured_overage")
+    with pytest.raises(BudgetExceeded):
+        ledger.charge(Usage(env_restores=1), source="must_not_restore")
+    assert ledger.used.env_restores == 0

@@ -540,7 +540,9 @@ class BudgetLedger:
         with self._lock:
             remaining = self.remaining(phase=phase, budget_phase=budget_phase)
             unavailable = tuple(key for key, value in remaining.items()
-                                if value is not None and getattr(usage, key) > value)
+                                if (key in self.over_budget
+                                    or (value is not None and getattr(usage, key) > value)
+                                    or (key == "wall_seconds" and value == 0)))
             if unavailable:
                 raise BudgetExceeded(unavailable, UsagePhase(phase))
 
