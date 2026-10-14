@@ -258,16 +258,24 @@ def summarize(manifest_path: Path | str) -> dict:
                           for identity in g["observed_judge_identities"]}) <= 1
         same_tasks = all(s == sets[0] for s in sets)
         complete = all(g["finished"] == g["planned"] == g["cost_complete_runs"] for g in choices)
-        comparisons.append({"condition": json.loads(key),
+        condition = json.loads(key)
+        finite_wall_seconds_budget = condition["budget"]["wall_seconds"] is not None
+        comparisons.append({"condition": condition,
             "methods": [g["method"] + "/" + g["ablation"] for g in choices],
             "same_task_conditions": same_tasks, "consistent_observed_generator": bool(same_generator),
             "consistent_active_judge": same_judge,
             "all_runs_finished_with_known_cost": complete,
-            "fair_comparison_eligible": len(choices) >= 2 and bool(same_generator) and same_judge and same_tasks and complete})
+            "finite_wall_seconds_budget": finite_wall_seconds_budget,
+            "fair_comparison_eligible": (len(choices) >= 2 and bool(same_generator) and same_judge
+                                         and same_tasks and complete and not finite_wall_seconds_budget)})
 
     return {"schema_version": 1, "groups": summary, "comparisons": comparisons,
             "interpretation": "CPU fixture results validate implementation, not pretrained model quality. "
-                              "Separate models/modalities/environments; report missing, failed and unknown-cost runs."}
+                              "Separate models/modalities/environments; report missing, failed and unknown-cost runs. "
+                              "Usage.wall_seconds measures instrumented operations plus deduplicated MCTS overhead, "
+                              "not end-to-end elapsed time; coverage differs between B0/B1 and MCTS. "
+                              "Finite wall_seconds budgets are excluded from fair comparisons because equal limits "
+                              "do not establish equal end-to-end time budgets."}
 
 
 def main(argv=None):

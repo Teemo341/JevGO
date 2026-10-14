@@ -145,3 +145,30 @@ def test_actual_backbone_revision_mismatch_splits_comparisons(tmp_path):
     report = summarize(manifest_path)
     assert len(report["comparisons"]) == 2
     assert not any(c["fair_comparison_eligible"] for c in report["comparisons"])
+
+
+@pytest.mark.parametrize("wall_seconds,eligible", [(None, True), (0.0, False), (60.0, False)])
+def test_finite_instrumented_wall_budget_excludes_fair_comparison(tmp_path, wall_seconds, eligible):
+    cfg = spec()
+    cfg.update(methods=["B0", "B3"], seeds=[0], ablations=["full"],
+               run={"budget": {"wall_seconds": wall_seconds}})
+    manifest_path = run_matrix(cfg, output_dir=tmp_path / "wall-budget", assets_root=tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    for entry in manifest["runs"]:
+        artifact(Path(entry["directory"]), entry["payload"])
+        entry["status"] = "finished"
+    manifest_path.write_text(json.dumps(manifest))
+
+    report = summarize(manifest_path)
+    assert len(report["comparisons"]) == 1
+    comparison = report["comparisons"][0]
+    assert comparison["methods"] == ["B0/full", "B3/full"]
+    assert comparison["condition"]["budget"]["wall_seconds"] == wall_seconds
+    assert comparison["same_task_conditions"]
+    assert comparison["consistent_observed_generator"]
+    assert comparison["consistent_active_judge"]
+    assert comparison["all_runs_finished_with_known_cost"]
+    assert comparison["finite_wall_seconds_budget"] is (wall_seconds is not None)
+    assert comparison["fair_comparison_eligible"] is eligible
+    assert "not end-to-end elapsed time" in report["interpretation"]
+    assert "coverage differs between B0/B1 and MCTS" in report["interpretation"]
