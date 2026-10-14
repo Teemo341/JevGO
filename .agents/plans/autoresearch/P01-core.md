@@ -5,7 +5,7 @@
 
 定位：AR-0/4/5/7。先说明本次输入输出、上下游和验证方式。前置任务：P00。
 首选 Agent：gpt-6-astra，reasoning_effort=ultra。
-状态：running；base aba9139；agent implement_p01_core。
+状态：cpu_verified；base aba9139；commit f8b792e；24 tests passed；独立审查通过。
 主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
 
 背景：[长期目标](../../skills/jevgo-autoresearch/references/project-goal.md)、[总计划](README.md)、[共享契约](CONTRACTS.md)。

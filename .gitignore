@@ -221,7 +221,7 @@ __marimo__/
 
 # JevGO project-local runtimes, external sources, assets and smoke outputs
 .tools/
-models/
+/models/
 data/
 artifacts/
 

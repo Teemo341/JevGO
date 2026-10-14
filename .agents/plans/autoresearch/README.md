@@ -9,7 +9,7 @@
 | 任务 | 环节 | 依赖 | 状态 |
 | --- | --- | --- | --- |
 | [P00 文档与开发基线](P00-baseline.md) | 协作 | 无 | cpu_verified: aba9139 |
-| [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | running |
+| [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | cpu_verified: f8b792e |
 | [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | planned |
 | [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | planned |
 | [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | planned |
