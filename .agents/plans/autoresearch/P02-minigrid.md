@@ -40,5 +40,6 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 
 - 基线：`38a0f5d`。
 - 交付 commit：`770c93f`。
-- 验收/进度：21 passed; true MiniGrid Empty/Empty-Random 5x5。
-- 已执行测试均退出 0；原始输出在对应工作树 `.dev/artifacts/` 或主控集成验收记录。
+- 验收：21 项真实 MiniGrid 与恢复测试。
+- 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+- 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。

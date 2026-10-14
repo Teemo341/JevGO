@@ -5,7 +5,7 @@ CPU验证首版及外部GPU执行包。
 
 定位：EVAL。先说明本次输入输出、上下游和验证方式。前置任务：P08,P09,P10,P11。
 首选 Agent：gpt-6-astra，reasoning_effort=ultra。
-状态：planned。主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
+状态：final_regression_running。主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
 
 背景：[长期目标](../../skills/jevgo-autoresearch/references/project-goal.md)、[总计划](README.md)、[共享契约](CONTRACTS.md)。
 
@@ -35,3 +35,11 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 - 缺GPU/数据时完成独立工作，明确阻塞。随机模型、依赖smoke、fixture不是正式效果。
 - 只本地提交本任务范围；回传SHA、命令/退出码、证据、验证层级和剩余事项，由主控合入集成分支。
 - 再拆分时向主控提交依赖和子任务，不自行占用更多agent槽位。新对话凭本文件及契约即可接手。
+
+## 当前执行记录
+
+- 基线：`6107fc6; 最终集成 17d3744`。
+- 交付 commit：`21120f9`。
+- 验收：10 项发布归档测试首轮通过；最终全套回归执行中。
+- 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+- 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。

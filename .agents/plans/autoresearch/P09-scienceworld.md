@@ -40,5 +40,6 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 
 - 基线：`7b65011 + d284cbc`。
 - 交付 commit：`d69d741`。
-- 验收/进度：4 real JVM tests; successful process cleanup。
-- 已执行测试均退出 0；原始输出在对应工作树 `.dev/artifacts/` 或主控集成验收记录。
+- 验收：4 项真实 ScienceWorld JVM；成功/失败/超限/恢复/退出。
+- 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+- 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。

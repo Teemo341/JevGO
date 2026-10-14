@@ -5,7 +5,7 @@
 
 定位：AR-0/4/5/7。先说明本次输入输出、上下游和验证方式。前置任务：P00。
 首选 Agent：gpt-6-astra，reasoning_effort=ultra。
-状态：cpu_verified；base aba9139；commit f8b792e；24 tests passed；独立审查通过。
+状态：cpu_verified。
 主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
 
 背景：[长期目标](../../skills/jevgo-autoresearch/references/project-goal.md)、[总计划](README.md)、[共享契约](CONTRACTS.md)。
@@ -36,3 +36,11 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 - 缺GPU/数据时完成独立工作，明确阻塞。随机模型、依赖smoke、fixture不是正式效果。
 - 只本地提交本任务范围；回传SHA、命令/退出码、证据、验证层级和剩余事项，由主控合入集成分支。
 - 再拆分时向主控提交依赖和子任务，不自行占用更多agent槽位。新对话凭本文件及契约即可接手。
+
+## 当前执行记录
+
+- 基线：`P00`。
+- 交付 commit：`f8b792e + d284cbc`。
+- 验收：25 项公共契约和预算测试。
+- 验证命令采用本卡固定 worktree/解释器；退出码及最终集成证据见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+- 共享资源未复制或重装，正式代码不依赖开发目录。真实模型与正式研究效果交接见 [GPU-HANDOFF.md](GPU-HANDOFF.md)。

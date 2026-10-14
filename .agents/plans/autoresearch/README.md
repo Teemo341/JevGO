@@ -8,19 +8,19 @@
 ## 任务表
 | 任务 | 环节 | 依赖 | 状态 |
 | --- | --- | --- | --- |
-| [P00 文档与开发基线](P00-baseline.md) | 协作 | 无 | cpu_verified: aba9139 |
-| [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | cpu_verified: f8b792e |
-| [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | cpu_verified: 770c93f |
-| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | cpu_verified: 3e6b3ae |
-| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | running: pending |
-| [P05 研究状态转换](P05-research.md) | AR-2/3/5/7 | P01 | cpu_verified: 09a8ba8 |
-| [P06 MCTS引擎](P06-mcts.md) | AR-1/6 | P01 | running: pending |
-| [P07 运行器与四种方法](P07-runner.md) | AR-0至7 | P02,P03,P04,P05,P06 | planned |
-| [P08 ALFWorld适配](P08-alfworld.md) | AR-0/4 | P01 | cpu_verified: 13b5c19 |
-| [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | cpu_verified: d69d741 |
-| [P10 DiscoveryWorld适配](P10-discoveryworld.md) | AR-0/4 | P01 | planned |
-| [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | planned |
-| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | planned |
+| [P00 文档与开发基线](P00-baseline.md) | 协作 | 无 | cpu_verified |
+| [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | cpu_verified |
+| [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | cpu_verified |
+| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | cpu_verified_gpu_pending |
+| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | cpu_verified_gpu_pending |
+| [P05 研究状态转换](P05-research.md) | AR-2/3/5/7 | P01 | cpu_verified |
+| [P06 MCTS引擎](P06-mcts.md) | AR-1/6 | P01 | cpu_verified |
+| [P07 运行器与四种方法](P07-runner.md) | AR-0至7 | P02,P03,P04,P05,P06 | cpu_verified |
+| [P08 ALFWorld适配](P08-alfworld.md) | AR-0/4 | P01 | cpu_verified_fixture_only |
+| [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | cpu_verified |
+| [P10 DiscoveryWorld适配](P10-discoveryworld.md) | AR-0/4 | P01 | cpu_verified_online_only |
+| [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | cpu_verified_fixture_only |
+| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | final_regression_running |
 
 ## 依赖与调度
 P00 → P01；P02/P03/P04/P05/P06/P08/P09/P10随后可独立开发。P07等待P02至P06；P11等待P07；P12等待P08至P11及传递依赖。
@@ -48,3 +48,5 @@ B0顺序LLM；B1 JEV重排贪心；B2无JEV MCTS；B3完整方法。候选/工�
 ## 外部交接
 任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档在P12用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
 训练、SemIf缓存优化、通用命令行实验环境进入后续任务池。
+
+具体交付记录：[集成验收](ACCEPTANCE.md)、[GPU独立交接](GPU-HANDOFF.md)、[P07a并行子任务](P07a-cli.md)。
