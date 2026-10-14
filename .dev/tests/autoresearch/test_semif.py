@@ -346,7 +346,7 @@ def test_only_local_cuda_pretrained_loading_and_config_revision(assets, monkeypa
     assert backend.identity.metadata["injected_model"] is False
     with pytest.raises(UnsupportedCapability, match="inject tiny"):
         SemIfBackend(assets_root=assets, device="cpu")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError, match="configured SemIf checkpoint"):
         SemIfBackend(assets_root=assets, model_path="remote/model-that-is-not-local")
     assert len(calls) == 1
 
@@ -398,3 +398,29 @@ def test_zero_wall_time_prevents_all_model_calls(backend):
         backend.generate(GenerationRequest(prompt="x", max_new_tokens=3), ledger=ledger)
     assert backend.model.forward_calls == backend.model.generate_calls == 0
     assert ledger.used == Usage()
+
+
+def test_nonconfigured_existing_model_path_rejected_before_loading(assets, monkeypatch):
+    alternative = assets / "models/OtherModel"
+    alternative.mkdir()
+    (alternative / "config.json").write_text("{}")
+    monkeypatch.setattr("jevgo.models.semif.semif_core.resolve_device",
+                        lambda *_: pytest.fail("Must reject path before checking CUDA"))
+    monkeypatch.setattr("jevgo.models.semif.semif_core.load_causal_model",
+                        lambda *_args, **_kwargs: pytest.fail("Must not load a different checkpoint"))
+    with pytest.raises(ValueError, match="configured SemIf checkpoint"):
+        SemIfBackend(assets_root=assets, model_path=alternative)
+    with pytest.raises(ValueError, match="configured SemIf checkpoint"):
+        SemIfBackend(assets_root=assets, model_path="models/OtherModel", device="cpu")
+
+
+def test_explicit_configured_path_preserves_model_identity(assets, monkeypatch):
+    directory = assets / "models/Qwen3.5-4B"
+    monkeypatch.setattr("jevgo.models.semif.semif_core.resolve_device", lambda _: torch.device("cuda:0"))
+    monkeypatch.setattr("jevgo.models.semif.semif_core.load_causal_model",
+                        lambda source, revision, **_: (FixedModel(), ByteTokenizer(),
+                                                       {"source": source, "revision": revision}))
+    backend = SemIfBackend(assets_root=assets, model_path=directory / ".." / "Qwen3.5-4B")
+    assert backend.identity.model == "Qwen/Qwen3.5-4B"
+    assert backend.identity.revision == "model-revision"
+    assert backend.identity.metadata["source"] == str(directory)
