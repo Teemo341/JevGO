@@ -93,6 +93,8 @@ def run_from_dict(payload: Mapping, *, assets_root: str | Path, output_dir: str 
     modality = episode.options.get("modality", "text")
     if modality not in ("text", "vl"):
         raise ValueError("Episode modality must be text or vl")
+    if modality == "vl" and episode.environment.lower() != "discoveryworld":
+        raise UnsupportedCapability("Only DiscoveryWorld currently provides public VL images; select text for this environment")
     if modality == "vl" and model_config["backend"] != "jev_27b_vl":
         raise UnsupportedCapability("VL episodes require the configured VL model")
     output = _new_output(output_dir)

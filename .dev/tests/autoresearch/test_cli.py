@@ -262,3 +262,14 @@ def test_cli_malformed_yaml_returns_configuration_error(workspace, capsys):
     error = capsys.readouterr().err
     assert "Error" in error and "Traceback" not in error
     assert not (workspace / "run").exists()
+
+
+def test_vl_label_requires_actual_environment_images(tmp_path):
+    from jevgo.factory import run_from_dict
+    from jevgo.core import UnsupportedCapability
+    payload = {"episode": {"environment": "minigrid", "task": "MiniGrid-Empty-5x5-v0",
+                           "options": {"modality": "vl"}},
+               "model": {"backend": "jev_27b_vl"}}
+    with pytest.raises(UnsupportedCapability, match="public VL images"):
+        run_from_dict(payload, assets_root=tmp_path, output_dir=tmp_path / "must-not-run")
+    assert not (tmp_path / "must-not-run").exists()
