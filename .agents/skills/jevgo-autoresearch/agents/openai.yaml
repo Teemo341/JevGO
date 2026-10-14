@@ -1,0 +1,4 @@
+interface:
+  display_name: "JevGO 自动研究框架"
+  short_description: "明确 JevGO 自动研究目标、核心循环与公平对比，并定位当前算法实现环节"
+  default_prompt: "请使用 $jevgo-autoresearch，先定位本次任务在 JevGO 核心循环中的环节，再实现并验证相应算法。"

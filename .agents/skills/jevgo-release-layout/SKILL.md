@@ -10,7 +10,7 @@ description: 在 JevGO 项目新增或修改代码、测试、辅助脚本，整
 ## 文件归属
 
 - **发布保留**：业务实现、用户实际调用的安装/运行入口、必要配置与锁文件、最简使用说明、许可证。当前 `scripts/` 只保留 `bootstrap.sh`、`env.sh`、`verify_offline.py`；后续新增文件按实际用途判断，不按名称判断。
-- **开发临时**：测试、smoke、兼容性探针、调试脚本、构建/导出/抓取工具、测试样例、实验结果和日志，统一放在 `.dev/`。目录约定：`tests/`、`tools/`、`fixtures/`、`artifacts/`、`cache/`、`tmp/`；只在实际需要时创建。
+- **开发文件**：测试、smoke、兼容性探针、调试脚本、构建/导出/抓取工具、测试样例、实验结果和日志，统一放在 `.dev/`。可复用源码放 `analysis/`、`tests/`、`tools/`，小型稳定素材放 `fixtures/`，并进入 Git；`logs/`、`artifacts/`、`cache/`、`tmp/`、`worktrees/` 忽略；只在实际需要时创建。
 - `.venv/` 是生成的运行环境；`.tools/`、`.cache/offline/` 和 `.third-party/autotrust/` 是当前离线交付资源。它们不因名称包含 cache 或 third-party 就成为可删的开发垃圾。保留的 wheel、固定源码归档、补丁和来源哈希支持离线重建，不提交大体积二进制到 Git。
 - 本技能与 `AGENTS.md` 是长期项目协作规则，保留在开发仓库；不属于用户运行脚本，发布包可排除。
 

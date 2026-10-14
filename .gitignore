@@ -225,5 +225,15 @@ models/
 data/
 artifacts/
 
-# Local development code and outputs; excluded from releases
-.dev/
+# Development sources are versioned; generated outputs remain local.
+.dev/*
+!.dev/README.md
+!.dev/analysis/
+!.dev/tests/
+!.dev/tools/
+!.dev/fixtures/
+.dev/logs/
+.dev/artifacts/
+.dev/cache/
+.dev/tmp/
+.dev/worktrees/
