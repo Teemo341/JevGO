@@ -5,7 +5,8 @@
 
 定位：协作。先说明本次输入输出、上下游和验证方式。前置任务：无。
 首选 Agent：gpt-6-astra，reasoning_effort=ultra。
-状态：planned。主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
+状态：cpu_verified；交付 aba9139；git diff --check通过；源码不被忽略、产物被忽略。
+主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
 
 背景：[长期目标](../../skills/jevgo-autoresearch/references/project-goal.md)、[总计划](README.md)、[共享契约](CONTRACTS.md)。
 
