@@ -351,6 +351,45 @@ def test_only_local_cuda_pretrained_loading_and_config_revision(assets, monkeypa
     assert len(calls) == 1
 
 
+def test_pretrained_loader_dependency_versions_are_plain_json_strings(assets, monkeypatch):
+    import transformers
+    from jevgo.core import ModelIdentity
+
+    class VersionString(str):
+        pass
+
+    model, tokenizer = FixedModel(), ByteTokenizer()
+    monkeypatch.setattr("jevgo.models.semif.semif_core.resolve_device", lambda _: torch.device("cuda:0"))
+    monkeypatch.setattr(transformers.AutoConfig, "from_pretrained",
+                        lambda *_args, **_kwargs: SimpleNamespace(model_type="cpu_fixture"))
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *_args, **_kwargs: tokenizer)
+    monkeypatch.setattr(transformers.AutoModelForCausalLM, "from_pretrained",
+                        lambda *_args, **_kwargs: (model, {}))
+    transformers_version = str(transformers.__version__)
+    monkeypatch.setattr(transformers, "__version__", VersionString(transformers_version))
+
+    # Run the installed loader's real metadata construction, without loading
+    # weights or touching CUDA. Torch supplies its actual TorchVersion object.
+    backend = SemIfBackend(assets_root=assets)
+    expected = {"torch_version": str(torch.__version__), "transformers_version": transformers_version}
+    for key, value in expected.items():
+        assert type(backend.identity.metadata[key]) is str
+        assert backend.identity.metadata[key] == value
+        assert type(backend._model_metadata[key]) is str
+    assert backend.identity.revision == "model-revision"
+    assert backend.identity.metadata["injected_model"] is False
+    assert ModelIdentity.model_validate_json(backend.identity.model_dump_json()) == backend.identity
+    assert backend.model is model and backend.tokenizer is tokenizer
+    assert model.forward_calls == model.generate_calls == 0
+
+
+@pytest.mark.parametrize("key", ["torch_version", "transformers_version", "other_metadata"])
+def test_non_string_metadata_is_not_silently_stringified(assets, key):
+    with pytest.raises(ValueError, match="Expected finite JSON data, got object"):
+        SemIfBackend(assets_root=assets, model=FixedModel(), tokenizer=ByteTokenizer(),
+                     model_metadata={key: object()})
+
+
 def test_injection_must_be_complete_and_close_disables_calls(assets, backend):
     with pytest.raises(ValueError, match="together"):
         SemIfBackend(assets_root=assets, model=FixedModel())

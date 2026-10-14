@@ -105,6 +105,12 @@ class SemIfBackend:
         capacity = getattr(model_config, "max_position_embeddings", None)
         if isinstance(capacity, int) and max_model_len > capacity:
             raise ValueError("max_model_len exceeds the model's context capacity")
+        # The pinned loader returns torch.__version__ as a str subclass.
+        # Normalize dependency version strings at this boundary; keep strict
+        # JSON validation for all other metadata and non-string values.
+        for key in ("torch_version", "transformers_version"):
+            if isinstance(metadata.get(key), str):
+                metadata[key] = str(metadata[key])
         self._model_metadata = {
             **metadata, "injected_model": injected,
             "source": metadata.get("source", f"injected:{type(model).__name__}" if injected else str(source)),
