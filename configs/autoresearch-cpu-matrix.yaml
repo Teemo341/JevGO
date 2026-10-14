@@ -1,0 +1,19 @@
+# Algorithm/environment acceptance only: this is NOT pretrained-model efficacy.
+episodes:
+  - {episode_id: cpu-empty-5x5, environment: minigrid, task: MiniGrid-Empty-5x5-v0, split: development}
+seeds: [0, 1]
+models: [{backend: deterministic}]
+methods: [B0, B1, B2, B3]
+ablations: [full, no_candidate_judge, no_evidence_judge, no_stop_judge, no_working_memory]
+run:
+  learning_mode: none
+  candidate_count: 4
+  simulations: 8
+  max_depth: 4
+  rollout_depth: 2
+  c_puct: 1.5
+  gamma: 1
+  max_steps: 20
+  budget: {env_steps: 1000}
+  commit_reserve: {env_steps: 1}
+  options: {memory_records: 4, max_new_tokens: 256}

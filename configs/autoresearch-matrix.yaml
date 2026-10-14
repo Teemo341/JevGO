@@ -1,0 +1,28 @@
+# Planning this matrix does not run models. Use --execute on a GPU host only.
+# MiniGrid observations are text for every model, including the VL checkpoint.
+episodes:
+  - episode_id: minigrid-empty-5x5
+    environment: minigrid
+    task: MiniGrid-Empty-5x5-v0
+    split: development
+    options: {verify_replay: true, modality: text}
+seeds: [0, 1]
+models:
+  - {backend: jev_9b, base_url: 'http://127.0.0.1:8009', max_model_len: 4096}
+  - {backend: jev_27b, base_url: 'http://127.0.0.1:8027', max_model_len: 4096}
+  - {backend: jev_27b_vl, base_url: 'http://127.0.0.1:8028', max_model_len: 4096}
+  - {backend: semif, max_model_len: 4096}
+methods: [B0, B1, B2, B3]
+ablations: [full, no_candidate_judge, no_evidence_judge, no_stop_judge, no_working_memory]
+run:
+  learning_mode: none
+  candidate_count: 4
+  simulations: 8
+  max_depth: 4
+  rollout_depth: 2
+  c_puct: 1.5
+  gamma: 1
+  max_steps: 20
+  budget: {env_steps: 1000, model_requests: 1000, input_tokens: 2000000, output_tokens: 200000}
+  commit_reserve: {env_steps: 1}
+  options: {memory_records: 4, max_new_tokens: 256}
