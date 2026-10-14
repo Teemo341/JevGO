@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from jevgo.core import Action, BudgetLedger, EpisodeSpec, EventRecord, JSONLEventStore, Observation, ResearchState, RunConfig, RunResult, TerminationReason, Usage
+from jevgo.core import Action, BudgetLimits, BudgetLedger, EpisodeSpec, EventRecord, JSONLEventStore, Observation, ResearchState, RunConfig, RunResult, TerminationReason, Usage
 from jevgo.evaluation import audit_run, build_matrix, run_matrix, summarize, wilson
 
 
@@ -16,8 +16,8 @@ def spec():
 def artifact(path, payload, success=True):
     path.mkdir()
     events = JSONLEventStore(path / "events.jsonl")
-    ledger = BudgetLedger(event_store=events)
-    ledger.charge(Usage(env_steps=2, replay_steps=1), source="env", phase="replay")
+    ledger = BudgetLedger(BudgetLimits.model_validate(payload["run"]["budget"]), event_store=events)
+    ledger.record(Usage(env_steps=2, replay_steps=1), source="env", phase="replay")
     episode = EpisodeSpec.model_validate(payload["episode"])
     config = RunConfig.model_validate(payload["run"])
     state = ResearchState(episode=episode, observation=Observation(text="result"), success=success)
@@ -98,3 +98,32 @@ def test_wilson_is_defined_for_failures_and_empty():
     assert wilson(0, 0) is None
     assert wilson(0, 10)[0] == 0
     assert 0 < wilson(5, 10)[0] < .5 < wilson(5, 10)[1] < 1
+
+
+def test_overage_is_recomputed_and_unknown_cost_cannot_count_within_budget(tmp_path):
+    payload = build_matrix(spec())[0]["payload"]
+    payload["run"]["budget"]["env_steps"] = 1
+    path = tmp_path / "overage"
+    artifact(path, payload)
+    ledger = json.loads((path / "ledger.json").read_text())
+    ledger["limits"] = payload["run"]["budget"]
+    ledger["over_budget"] = []  # Stale bookkeeping cannot defeat the audit.
+    (path / "ledger.json").write_text(json.dumps(ledger))
+    audited = audit_run(path)
+    assert audited["result"].success
+    assert not audited["within_budget"]
+    assert audited["recomputed_over_budget"] == ["env_steps"]
+    assert not audited["declared_over_budget_consistent"]
+
+    payload = build_matrix(spec())[0]["payload"]
+    path = tmp_path / "unknown"
+    artifact(path, payload)
+    ledger = json.loads((path / "ledger.json").read_text())
+    ledger["entries"][0]["metadata"] = {"unknown_usage": ["input_tokens"], "usage_complete": False}
+    (path / "ledger.json").write_text(json.dumps(ledger))
+    events = [json.loads(x) for x in (path / "events.jsonl").read_text().splitlines()]
+    events[0]["payload"]["metadata"] = ledger["entries"][0]["metadata"]
+    (path / "events.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+    audited = audit_run(path)
+    assert audited["result"].success and not audited["cost_complete"]
+    assert not audited["within_budget"]

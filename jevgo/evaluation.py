@@ -14,7 +14,7 @@ from typing import Any
 
 import yaml
 
-from .core import EpisodeSpec, JSONLEventStore, RunConfig, RunResult, Usage
+from .core import BudgetLimits, EpisodeSpec, JSONLEventStore, RunConfig, RunResult, Usage
 
 
 ABLATIONS = {
@@ -154,9 +154,15 @@ def audit_run(directory: Path | str) -> dict:
     committed = [e for e in events if e.event_type == "transition" and e.payload["phase"] == "commit"]
     if len(committed) != len(result.final_state.actions):
         raise ValueError("Committed action count differs from transition events")
+    if BudgetLimits.model_validate(ledger["limits"]) != result.config.budget:
+        raise ValueError("Ledger limits differ from the executed run config")
+    over_budget = [key for key in Usage.model_fields if getattr(result.config.budget, key) is not None
+                   and getattr(total, key) > getattr(result.config.budget, key)]
     return {"result": result, "usage": total.model_dump(mode="json"),
             "phase_usage": {k: v.model_dump(mode="json") for k, v in phases.items()},
-            "cost_complete": complete, "within_budget": not ledger["over_budget"],
+            "cost_complete": complete, "within_budget": not over_budget and complete,
+            "recomputed_over_budget": over_budget,
+            "declared_over_budget_consistent": set(over_budget) == set(ledger["over_budget"]),
             "committed_steps": len(committed)}
 
 
@@ -174,7 +180,7 @@ def _comparison_condition(payload: dict) -> dict:
             "modality": episode.options.get("modality", "text"), "split": episode.split,
             "budget": config.budget.model_dump(mode="json"),
             "commit_reserve": config.commit_reserve.model_dump(mode="json"),
-            "max_steps": config.max_steps,
+            "max_steps": config.max_steps, "options": config.model_dump(mode="json")["options"],
             "search_parameters": {k: getattr(config, k) for k in
                 ("candidate_count", "simulations", "max_depth", "rollout_depth", "c_puct", "gamma")}}
 
@@ -201,8 +207,10 @@ def summarize(manifest_path: Path | str) -> dict:
                 row.update(objective_success=result.success,
                     within_budget_success=result.success and audited["within_budget"],
                     termination_reason=result.termination_reason.value,
-                    validation_level=result.metadata.get("validation_level", "unclassified"))
-            except (ValueError, OSError) as exc:
+                    validation_level=result.metadata.get("validation_level", "unclassified"),
+                    generator_identity={k: result.metadata.get("generator", {}).get(k)
+                                        for k in ("backend", "model", "revision", "adapter")})
+            except (ValueError, OSError, KeyError, TypeError) as exc:
                 row.update(status="invalid_artifact", error=str(exc))
         elif "error" in entry:
             row["error"] = entry["error"]
@@ -220,6 +228,8 @@ def summarize(manifest_path: Path | str) -> dict:
             "success_rate_of_attempted": successes / len(attempted) if attempted else None,
             "success_rate_wilson95": wilson(successes, len(attempted)), "mean_usage": costs,
             "cost_complete_runs": sum(r["cost_complete"] for r in rows),
+            "observed_generator_identities": [json.loads(x) for x in sorted({
+                _canonical(r["generator_identity"]) for r in rows if "generator_identity" in r})],
             "validation_levels": sorted({r.get("validation_level", "unverified") for r in rows}),
             "rows": rows})
     # A fair pair requires the same complete task/seed/permissions set as well as
@@ -227,7 +237,7 @@ def summarize(manifest_path: Path | str) -> dict:
     comparison_sets = defaultdict(list)
     for group in summary:
         condition = {k: group[k] for k in ("environment", "model", "modality", "split", "budget",
-                     "commit_reserve", "max_steps", "search_parameters")}
+                     "commit_reserve", "max_steps", "options", "search_parameters")}
         comparison_sets[_canonical(condition)].append(group)
     comparisons = []
     for key, choices in comparison_sets.items():
@@ -236,6 +246,8 @@ def summarize(manifest_path: Path | str) -> dict:
         comparisons.append({"condition": json.loads(key),
             "methods": [g["method"] + "/" + g["ablation"] for g in choices],
             "same_task_conditions": all(s == sets[0] for s in sets),
+            "consistent_observed_generator": len({_canonical(identity)
+                for g in choices for identity in g["observed_generator_identities"]}) == 1,
             "all_runs_finished_with_known_cost": all(g["finished"] == g["planned"] == g["cost_complete_runs"] for g in choices)})
     return {"schema_version": 1, "groups": summary, "comparisons": comparisons,
             "interpretation": "CPU fixture results validate implementation, not pretrained model quality. "
@@ -250,12 +262,18 @@ def main(argv=None):
     matrix.add_argument("--output", required=True, type=Path)
     matrix.add_argument("--assets-root", required=True, type=Path)
     matrix.add_argument("--execute", action="store_true")
+    matrix.add_argument("--model", help="Select one of the explicitly configured model backends")
     analysis = sub.add_parser("summarize")
     analysis.add_argument("--manifest", required=True, type=Path)
     analysis.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     if args.command == "matrix":
-        path = run_matrix(yaml.safe_load(args.config.read_text()), output_dir=args.output,
+        specification = yaml.safe_load(args.config.read_text())
+        if args.model:
+            specification["models"] = [m for m in specification["models"] if m["backend"] == args.model]
+            if not specification["models"]:
+                parser.error("--model must name a backend already present in the matrix")
+        path = run_matrix(specification, output_dir=args.output,
                           assets_root=args.assets_root, execute=args.execute)
         print(path)
     else:
