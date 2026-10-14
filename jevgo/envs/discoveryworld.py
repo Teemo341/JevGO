@@ -269,7 +269,7 @@ class DiscoveryWorldAdapter:
         started, failed = perf_counter(), False
         try:
             yield
-        except Exception:
+        except BaseException:
             failed = True
             raise
         finally:
@@ -340,12 +340,12 @@ class DiscoveryWorldAdapter:
                 self._accept(session, raw)
                 session.initial = session.fingerprint
                 return session
-            except Exception as error:
+            except BaseException as error:
                 if session:
                     self._close_session(session)
                 elif log:
                     log.close()
-                if isinstance(error, (BudgetExceeded, EnvironmentFailure)):
+                if not isinstance(error, Exception) or isinstance(error, (BudgetExceeded, EnvironmentFailure)):
                     raise
                 raise EnvironmentFailure("DiscoveryWorld worker startup failed") from error
 
@@ -402,11 +402,11 @@ class DiscoveryWorldAdapter:
                 self._compare(session.fingerprint, fingerprint, f"step_{index}")
             self._compare(session.fingerprint, saved.fingerprint, "restored")
             return session
-        except Exception as error:
+        except BaseException as error:
             failed = True
             if session:
                 self._close_session(session)
-            if isinstance(error, (BudgetExceeded, EnvironmentFailure)):
+            if not isinstance(error, Exception) or isinstance(error, (BudgetExceeded, EnvironmentFailure)):
                 raise
             raise EnvironmentFailure("DiscoveryWorld replay failed") from error
         finally:
@@ -456,9 +456,9 @@ class DiscoveryWorldAdapter:
             self.capabilities = EnvironmentCapabilities(deterministic_replay=details["replay_verified"],
                                                         details=details)
             return self._session.result  # The original worker was never perturbed.
-        except Exception as error:
+        except BaseException as error:
             self.close()
-            if isinstance(error, (BudgetExceeded, EnvironmentFailure)):
+            if not isinstance(error, Exception) or isinstance(error, (BudgetExceeded, EnvironmentFailure)):
                 raise
             raise EnvironmentFailure("DiscoveryWorld reset failed") from error
         finally:

@@ -202,6 +202,70 @@ def protocol(monkeypatch):
     return FakeProcess
 
 
+def interrupt_rpc(monkeypatch, call, error):
+    calls = 0
+
+    def select(readers, _w, _x, timeout):
+        nonlocal calls
+        calls += 1
+        if calls == call:
+            raise error
+        return readers, [], []
+
+    monkeypatch.setattr(module.select, "select", select)
+
+
+@pytest.mark.parametrize("exception_type", [KeyboardInterrupt, SystemExit])
+@pytest.mark.parametrize("verify, rpc_call", [
+    (False, 1), (True, 1), (True, 2), (True, 3), (True, 4), (True, 5)])
+def test_reset_interrupt_closes_initial_and_verification_workers(
+        output, protocol, monkeypatch, exception_type, verify, rpc_call):
+    adapter = DiscoveryWorldAdapter(output_dir=output)
+    ledger = BudgetLedger()
+    error = exception_type("interrupted worker RPC")
+    interrupt_rpc(monkeypatch, rpc_call, error)
+    try:
+        with pytest.raises(exception_type) as caught:
+            adapter.reset(episode(verify_replay=verify), ledger=ledger)
+        assert caught.value is error
+        assert adapter._session is None and adapter._verifying is False
+        assert protocol.instances and all(worker.poll() is not None for worker in protocol.instances)
+        assert ledger.used.env_resets == len(protocol.instances)
+        assert any(entry.failed for entry in ledger.entries)
+    finally:
+        adapter.close()
+    assert all(worker.poll() is not None for worker in protocol.instances)
+
+
+@pytest.mark.parametrize("exception_type", [KeyboardInterrupt, SystemExit])
+@pytest.mark.parametrize("rpc_call", [1, 2], ids=["load", "replay_step"])
+def test_restore_interrupt_closes_temporary_worker_and_preserves_owned_worker(
+        output, protocol, monkeypatch, exception_type, rpc_call):
+    adapter = DiscoveryWorldAdapter(output_dir=output)
+    ledger = BudgetLedger()
+    try:
+        adapter.reset(episode(), ledger=ledger)
+        adapter.step(rotate(), ledger=ledger)
+        snapshot = adapter.snapshot(ledger=ledger)
+        original = adapter._session
+        before = ledger.used
+        error = exception_type("interrupted replay RPC")
+        interrupt_rpc(monkeypatch, rpc_call, error)
+        with pytest.raises(exception_type) as caught:
+            adapter.restore(snapshot, ledger=ledger)
+        assert caught.value is error
+        assert adapter._session is original and original.process.poll() is None
+        assert all(worker.poll() is not None for worker in protocol.instances
+                   if worker is not original.process)
+        assert ledger.used.env_resets - before.env_resets == 1
+        assert ledger.used.env_restores - before.env_restores == 1
+        assert ledger.used.replay_steps - before.replay_steps == rpc_call - 1
+        assert any(entry.failed and entry.source == "discoveryworld.restore" for entry in ledger.entries)
+    finally:
+        adapter.close()
+    assert all(worker.poll() is not None for worker in protocol.instances)
+
+
 def test_constructor_is_lazy_and_cached_observe_does_not_consume_messages(output, protocol):
     adapter = DiscoveryWorldAdapter(output_dir=output)
     assert not output.exists()
