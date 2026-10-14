@@ -17,13 +17,15 @@ from jevgo.models.autotrust import ADAPTER, MODELS, _read_json, load_model_confi
 
 
 def build_launch(model: str, *, assets_root: str | Path, host: str = "127.0.0.1",
-                 port: int = 8000, max_model_len: int = 4096,
+                 port: int = 8000, max_model_len: int = 4096, tensor_parallel_size: int = 1,
                  executable: str | None = None) -> tuple[list[str], dict[str, str]]:
     """Return an offline launch specification after checking all required files."""
     if not host or type(port) is not int or not 1 <= port <= 65535:
         raise ValueError("A host and valid TCP port are required")
     if type(max_model_len) is not int or max_model_len < 1:
         raise ValueError("max_model_len must be positive")
+    if type(tensor_parallel_size) is not int or tensor_parallel_size < 1:
+        raise ValueError("tensor_parallel_size must be a positive integer")
     cfg, directory = load_model_config(model, assets_root)
     adapter = directory / "adapter_vllm"
     required = [directory / name for name in ("config.json", "tokenizer.json", "tokenizer_config.json",
@@ -61,6 +63,8 @@ def build_launch(model: str, *, assets_root: str | Path, host: str = "127.0.0.1"
                 "--host", host, "--port", str(port), "--max-model-len", str(max_model_len),
                 "--enable-lora", "--max-lora-rank", "32", "--lora-modules", f"{ADAPTER}={adapter}",
                 "--logprobs-mode", "processed_logprobs", "--max-logprobs", "256"]
+    if tensor_parallel_size != 1:
+        command += ["--tensor-parallel-size", str(tensor_parallel_size)]
     if model != "jev_9b":
         command.append("--trust-request-chat-template")
     if model == "jev_27b_vl":
@@ -83,10 +87,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--max-model-len", type=int, default=4096)
+    parser.add_argument("--tensor-parallel-size", type=int, default=1,
+                        help="Positive number of visible GPUs for vLLM tensor parallelism (default: 1)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     command, environment = build_launch(args.model, assets_root=args.assets_root, host=args.host,
-                                        port=args.port, max_model_len=args.max_model_len)
+                                        port=args.port, max_model_len=args.max_model_len,
+                                        tensor_parallel_size=args.tensor_parallel_size)
     if args.dry_run:
         print(json.dumps({"command": command, "environment": environment,
                           "validation": "local files only; real checkpoint inference GPU pending"}, indent=2))
