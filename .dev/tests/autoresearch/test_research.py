@@ -125,3 +125,17 @@ def test_score_mismatch_fails_without_discarding_ingested_state():
         policy.assess_completion(ingested, ledger=BudgetLedger())
     assert ingested.evidence[-1].content == "failure"
     assert len(ingested.actions) == 1
+
+
+def test_public_prompts_ignore_random_trace_identifiers():
+    first, second = state(), state()
+    assert first.state_id != second.state_id
+    assert first.evidence[0].evidence_id != second.evidence[0].evidence_id
+    assert public_state(first) == public_state(second)
+    candidate = Candidate(action=Action(name="a"), hypothesis="test hypothesis")
+    step = StepResult(observation=Observation(text="actual evidence"))
+    first = record_transition(first, candidate, step, branch_id="root/random-one")
+    second = record_transition(second, candidate, step, branch_id="root/random-two")
+    assert public_state(first) == public_state(second)
+    for value in (first.state_id, first.evidence[0].evidence_id, first.branch_id):
+        assert value not in json.dumps(public_state(first))
