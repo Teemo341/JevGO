@@ -4,8 +4,8 @@ import pytest
 
 from jevgo.core import (
     Action, BudgetLedger, BudgetLimits, Candidate, EpisodeSpec, EvidenceKind,
-    GenerationResponse, InvalidCandidate, JudgeResponse, ModelFailure, ModelIdentity,
-    Observation, RunConfig, StepResult, Usage,
+    GenerationResponse, InvalidCandidate, JSONLEventStore, JudgeResponse, ModelFailure, ModelIdentity,
+    Observation, RunConfig, StepResult, Usage, UsagePhase,
 )
 from jevgo.research import ResearchPolicy, initialize_state, public_state, record_transition
 
@@ -125,3 +125,96 @@ def test_score_mismatch_fails_without_discarding_ingested_state():
         policy.assess_completion(ingested, ledger=BudgetLedger())
     assert ingested.evidence[-1].content == "failure"
     assert len(ingested.actions) == 1
+
+
+def test_public_prompts_ignore_random_trace_identifiers():
+    first, second = state(), state()
+    assert first.state_id != second.state_id
+    assert first.evidence[0].evidence_id != second.evidence[0].evidence_id
+    assert public_state(first) == public_state(second)
+    candidate = Candidate(action=Action(name="a"), hypothesis="test hypothesis")
+    step = StepResult(observation=Observation(text="actual evidence"))
+    first = record_transition(first, candidate, step, branch_id="root/random-one")
+    second = record_transition(second, candidate, step, branch_id="root/random-two")
+    assert public_state(first) == public_state(second)
+    for value in (first.state_id, first.evidence[0].evidence_id, first.branch_id):
+        assert value not in json.dumps(public_state(first))
+
+
+def test_image_paths_are_stable_in_prompts_and_preserved_in_requests_and_evidence(tmp_path):
+    requests, states = [], []
+    for worker in ("random-worker-one", "random-worker-two"):
+        paths = (f"/runs/{worker}/view.png", f"/runs/{worker}/detail.png")
+        initial = initialize_state(EpisodeSpec(environment="test", task="goal"), StepResult(
+            observation=Observation(text="same visible scene", image_paths=paths)))
+        original = initial.model_dump(mode="json")
+        generator, judge = Model((proposal("a"),)), Model()
+        store = JSONLEventStore(tmp_path / worker / "events.jsonl")
+        policy = ResearchPolicy(generator, judge, RunConfig(method="B1", candidate_count=1), events=store)
+        policy.candidates(initial, ledger=BudgetLedger(), phase=UsagePhase.COMMIT)
+        generation, scoring = generator.requests[0], judge.requests[0]
+        assert generation.image_paths == scoring.image_paths == paths
+        assert all(path not in generation.prompt and path not in scoring.context for path in paths)
+        assert public_state(initial)["observation"]["image_paths"] == ["image_0", "image_1"]
+        assert initial.model_dump(mode="json") == original
+        assert initial.evidence[-1].raw["observation"]["image_paths"] == paths
+        events = store.read()
+        assert [event.event_type for event in events] == [
+            "generation_request", "proposal_samples", "judge_request", "judge", "candidates"]
+        for event, request in ((events[0], generation), (events[2], scoring)):
+            assert event.payload["phase"] == "commit"
+            assert event.model_dump(mode="json")["payload"]["request"] == request.model_dump(mode="json")
+        assert all("request" not in event.payload for event in (events[1], events[3]))
+        requests.append((generation, scoring))
+        states.append(initial)
+    assert public_state(states[0]) == public_state(states[1])
+    assert requests[0][0].prompt == requests[1][0].prompt
+    assert requests[0][1].context == requests[1][1].context
+
+
+@pytest.mark.parametrize("backend", ["generation", "judge"])
+@pytest.mark.parametrize("phase", [UsagePhase.SEARCH, UsagePhase.COMMIT])
+def test_failed_backend_request_is_persisted_before_call(tmp_path, backend, phase):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    failure = ModelFailure("backend unavailable")
+    initial = state()
+
+    class FailingModel(Model):
+        def fail(self, request, *, ledger, phase):
+            self.requests.append(request)
+            events = store.read()  # Read the persisted file inside the backend call.
+            assert len(events) == 1
+            event = events[0]
+            assert event.event_type == backend + "_request"
+            assert event.payload["phase"] == phase.value
+            assert event.episode_id == initial.episode.episode_id
+            assert event.branch_id == initial.branch_id
+            assert event.model_dump(mode="json")["payload"]["request"] == request.model_dump(mode="json")
+            raise failure
+
+        generate = score = fail
+
+    model = FailingModel()
+    policy = ResearchPolicy(model, model, RunConfig(method="B1"), events=store)
+    operation = policy.candidates if backend == "generation" else policy.assess_completion
+    with pytest.raises(ModelFailure) as caught:
+        operation(initial, ledger=BudgetLedger(), phase=phase)
+    assert caught.value is failure
+    assert len(model.requests) == len(store.read()) == 1
+
+
+def test_repair_attempt_logs_each_request_once_before_response(tmp_path):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    generator = Model(("invalid JSON",))
+    policy = ResearchPolicy(generator, None, RunConfig(method="B0"), events=store)
+    with pytest.raises(InvalidCandidate):
+        policy.candidates(state(), ledger=BudgetLedger())
+    events = store.read()
+    assert [event.event_type for event in events] == [
+        "generation_request", "proposal_samples", "generation_request", "proposal_samples"]
+    for attempt, (request_event, response_event) in enumerate(zip(events[::2], events[1::2])):
+        assert request_event.payload["attempt"] == response_event.payload["attempt"] == attempt
+        assert request_event.payload["phase"] == "search"
+        assert request_event.payload["request"]["prompt"] == generator.requests[attempt].prompt
+        assert "request" not in response_event.payload
+    assert generator.requests[0].prompt != generator.requests[1].prompt
