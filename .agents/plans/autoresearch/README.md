@@ -10,14 +10,14 @@
 | --- | --- | --- | --- |
 | [P00 文档与开发基线](P00-baseline.md) | 协作 | 无 | cpu_verified: aba9139 |
 | [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | cpu_verified: f8b792e |
-| [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | planned |
-| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | planned |
-| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | planned |
-| [P05 研究状态转换](P05-research.md) | AR-2/3/5/7 | P01 | planned |
-| [P06 MCTS引擎](P06-mcts.md) | AR-1/6 | P01 | planned |
+| [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | cpu_verified: 770c93f |
+| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | cpu_verified: 3e6b3ae |
+| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | running: pending |
+| [P05 研究状态转换](P05-research.md) | AR-2/3/5/7 | P01 | cpu_verified: 09a8ba8 |
+| [P06 MCTS引擎](P06-mcts.md) | AR-1/6 | P01 | running: pending |
 | [P07 运行器与四种方法](P07-runner.md) | AR-0至7 | P02,P03,P04,P05,P06 | planned |
-| [P08 ALFWorld适配](P08-alfworld.md) | AR-0/4 | P01 | planned |
-| [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | planned |
+| [P08 ALFWorld适配](P08-alfworld.md) | AR-0/4 | P01 | cpu_verified: 13b5c19 |
+| [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | cpu_verified: d69d741 |
 | [P10 DiscoveryWorld适配](P10-discoveryworld.md) | AR-0/4 | P01 | planned |
 | [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | planned |
 | [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | planned |

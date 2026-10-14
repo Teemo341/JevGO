@@ -82,6 +82,7 @@ ledger.summary() -> dict  # JSON-safe
 ```
 
 - 同一 run/全部分支共享一个 ledger；环境恢复只恢复世界，不回退账本。
+- `ensure_available` 在任意资源已经超额或当前阶段剩余 wall_seconds 为零时拒绝所有新操作，拒绝发生在收费/触网/环境变更之前。已发生费用仍可由 `record` 追加。
 - `charge` 用于已知固定成本，原子检查后在执行前计费；拒绝时不产生费用、也不执行真实操作。已经计费后失败不退款，可以追加零费用 failure entry。
 - `record` 用于已发生的实际费用，即使超出额度仍完整记录；调用方先用 `ensure_available` 检查 token 上界等可知预算，再执行并记录实际 token/耗时。无法提前知道的耗时不能保证零超额，超额在 `over_budget` 显示，后续操作应停止。不要重复记录已由 charge 计入的调用次数。
 - `phase=commit/search/replay` 是实际操作标签。search/replay 默认可用额度为硬上限减累计成本再减 commit reserve；commit 可用完整剩余额度。只有 replay 可显式设置 `budget_phase="commit"|"search"`，继承实际父操作的预算阶段。搜索恢复必须传 search，不能借 replay 绕过提交预留；实际提交恢复可以传 commit。
