@@ -128,3 +128,28 @@ def test_existing_output_never_overwritten_and_resources_closed(tmp_path):
     with pytest.raises(FileExistsError):
         run_episode(episode(), RunConfig(), MiniGridAdapter(), model, model, output_dir=tmp_path / "old")
     assert model.closed == 1 and not list((tmp_path / "old").iterdir())
+
+
+@pytest.mark.parametrize("method", ["B0", "B1"])
+def test_sequential_methods_need_no_successor_snapshots(tmp_path, method):
+    result = run(tmp_path, method, budget=BudgetLimits(env_steps=1000, env_snapshots=2))
+    assert result.success and result.usage.env_snapshots == 2
+
+
+def test_known_reward_is_backed_up_when_postprocessing_exhausts_budget(tmp_path):
+    class DenseMiniGrid(MiniGridAdapter):
+        def step(self, action, *, ledger, phase):
+            result = super().step(action, ledger=ledger, phase=phase)
+            return result.model_copy(update={"reward": 2.0})
+    model = Fixture()
+    result = run_episode(episode(), RunConfig(method="B3", simulations=1, rollout_depth=0,
+        judge_candidates=False, judge_stop=False, budget=BudgetLimits(judge_calls=0)),
+        DenseMiniGrid(), model, model, output_dir=tmp_path / "dense")
+    events = [json.loads(line) for line in (tmp_path / "dense/events.jsonl").read_text().splitlines()]
+    search = next(e["payload"]["result"] for e in events if e["event_type"] == "search")
+    assert search["partial_simulations"] == 1
+    visited = [edge for edge in search["rootstats"] if edge["N"]]
+    assert len(visited) == 1
+    assert visited[0]["N"] == visited[0]["partial_visits"] == 1
+    assert visited[0]["W"] == visited[0]["Q"] == 2
+    assert len(result.final_state.actions) == 1

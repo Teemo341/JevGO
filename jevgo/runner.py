@@ -51,16 +51,25 @@ class ResearchDomain:
         self.environment, self.policy, self.ledger, self.events = environment, policy, ledger, events
         self.current_state_id: str | None = None
         self.last_committed: ResearchState | None = None
+        self._pending_search_budget: BudgetExceeded | None = None
 
     @property
     def capabilities(self):
         return self.environment.capabilities
 
+    def _check_interruption(self, phase):
+        if UsagePhase(phase) == UsagePhase.SEARCH and self._pending_search_budget is not None:
+            raise self._pending_search_budget
+
     def candidates(self, state: SearchState, *, phase=UsagePhase.SEARCH):
+        self._check_interruption(phase)
         return self.policy.candidates(state.research, ledger=self.ledger, phase=phase)
 
     def transition(self, state: SearchState, candidate: Candidate, *, phase=UsagePhase.SEARCH):
         phase = UsagePhase(phase)
+        self._check_interruption(phase)
+        if phase == UsagePhase.COMMIT:
+            self._pending_search_budget = None
         if phase == UsagePhase.SEARCH:
             self.capabilities.require_branching()
         if state.terminal:
@@ -82,20 +91,34 @@ class ResearchDomain:
             branch_id=branch, payload={"phase": phase.value, "parent_state_id": state.research.state_id,
                 "candidate": candidate.model_dump(mode="json"), "plan": plan.model_dump(mode="json"),
                 "step": step.model_dump(mode="json"), "state": successor.model_dump(mode="json")}))
-        if not successor.done:
-            successor = self.policy.select_memory(successor, ledger=self.ledger, phase=phase)
+        snapshot = None
+        try:
+            if not successor.done:
+                successor = self.policy.select_memory(successor, ledger=self.ledger, phase=phase)
+                if phase == UsagePhase.COMMIT:
+                    self.last_committed = successor
+                successor = self.policy.assess_completion(successor, ledger=self.ledger, phase=phase)
+            self.current_state_id = successor.state_id
             if phase == UsagePhase.COMMIT:
                 self.last_committed = successor
-            successor = self.policy.assess_completion(successor, ledger=self.ledger, phase=phase)
-        self.current_state_id = successor.state_id
-        if phase == UsagePhase.COMMIT:
-            self.last_committed = successor
-        snapshot = None
-        if self.capabilities.can_branch and not successor.done:
-            snapshot = self.environment.snapshot(ledger=self.ledger, phase=phase)
+            if self.policy.config.method in ("B2", "B3") and self.capabilities.can_branch and not successor.done:
+                snapshot = self.environment.snapshot(ledger=self.ledger, phase=phase)
+        except BudgetExceeded as exc:
+            if phase != UsagePhase.SEARCH:
+                raise
+            # Return the already observed edge first. On the next candidates or
+            # evaluate call MCTS receives this interruption and performs exactly
+            # one partial backup, including this edge's known reward. No further
+            # search transition may run from the unsnapshotted successor.
+            self._pending_search_budget = exc
+            self.events.append(EventRecord(event_type="search_postprocessing_interrupted",
+                episode_id=successor.episode.episode_id, branch_id=branch,
+                payload={"state_id": successor.state_id, "known_reward": step.reward,
+                         "resources": list(exc.resources)}))
         return SearchTransition(SearchState(successor, snapshot), step.reward)
 
     def evaluate(self, state: SearchState, *, phase=UsagePhase.SEARCH):
+        self._check_interruption(phase)
         # Rollout rewards are accounted on edges. This explicit truncation bootstrap
         # never passes JEV plausibility off as a learned long-term value estimate.
         return ValueEstimate(value=0, source="environment" if state.terminal else "heuristic",

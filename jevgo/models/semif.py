@@ -58,8 +58,8 @@ class _GenerationProgress:
 class SemIfBackend:
     """GenerationBackend and JudgeBackend backed by the same frozen Torch model.
 
-    ``model_path`` defaults to the path in assets_root/configs/jevgo.yaml; all
-    pretrained loading is local-only. ``model_metadata`` describes injected model
+    ``model_path`` must resolve to the path in assets_root/configs/jevgo.yaml;
+    pretrained loading is local-only and cannot change the configured identity. ``model_metadata`` describes injected model
     provenance (source/revision), otherwise it is explicitly marked as injected.
     Request options are limited to generation ``enable_thinking`` and judging
     ``option_ids``. Input token counts are exact; overlong prompts are rejected.
@@ -75,10 +75,13 @@ class SemIfBackend:
         root = Path(assets_root).expanduser().resolve()
         with (root / "configs/jevgo.yaml").open(encoding="utf-8") as stream:
             config = yaml.safe_load(stream)["backbones"]["semif"]
-        source = (root / (model_path or config["local_directory"])).resolve()
+        configured_source = (root / config["local_directory"]).resolve()
+        source = (root / (config["local_directory"] if model_path is None else model_path)).resolve()
         injected = model is not None
         metadata = dict(model_metadata or {})
         if not injected:
+            if source != configured_source:
+                raise ValueError("model_path must resolve to the configured SemIf checkpoint directory")
             if not source.is_dir() or not (source / "config.json").is_file():
                 raise FileNotFoundError(f"Local SemIf checkpoint missing: {source}")
             if device not in ("auto", "cuda"):
