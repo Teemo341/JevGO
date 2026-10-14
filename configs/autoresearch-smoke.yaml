@@ -1,0 +1,29 @@
+# CPU integration fixture only. This is not a model-effectiveness benchmark.
+episode:
+  environment: minigrid
+  task: MiniGrid-Empty-5x5-v0
+  episode_id: minigrid-cpu-fixture
+  seed: 0
+  options:
+    verify_replay: true
+run:
+  method: B3
+  learning_mode: none
+  seed: 0
+  candidate_count: 4
+  simulations: 8
+  max_depth: 4
+  rollout_depth: 2
+  max_steps: 20
+  budget:
+    env_steps: 2000
+    model_requests: 3000
+  commit_reserve:
+    env_steps: 20
+    env_resets: 1
+    env_restores: 1
+    env_observations: 21
+  options:
+    max_new_tokens: 256
+model:
+  backend: deterministic
