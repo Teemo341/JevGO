@@ -6,6 +6,14 @@
 
 正式入口保留在 `scripts/`；开发测试、工具和产物统一放 `.dev/`。发布文件必须在删除 `.dev/` 后仍可独立安装和运行。
 
+## GPU 开发与测试
+
+执行依赖 GPU 的开发测试、真实模型推理/验收，或排查驱动与 CUDA 可见性前，读取：
+
+[jevgo-gpu-access](.agents/skills/jevgo-gpu-access/SKILL.md)
+
+默认沙箱可能隔离 NVIDIA 设备访问；沙箱内检查失败不能直接判定主机驱动损坏。按当前工具权限流程主动完成必要复核，无需用户重复提醒。纯 CPU 测试无需额外申请 GPU 访问。
+
 ## Autoresearch 目标与算法定位
 
 设计、实现、修改或评审 autoresearch 框架算法及其对比实验前，读取：
