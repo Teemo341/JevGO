@@ -2,7 +2,7 @@
 
 JevGO 第一版实现冻结参数的显式研究状态、LLM 候选、JEV 辅助评估、真实环境操作和单智能体 PUCT。模型参数不更新；`learning_mode` 目前仅接受 `none`，其他训练模式明确报错。
 
-当前已完成 CPU 算法与环境验收。真实 checkpoint 推理及完整 benchmark 对比仍需 GPU 验收；确定性后端仅用于检查框架，不能作为模型效果结论。
+截至 2026-10-15，已完成首版 CPU 算法与环境验收，以及四个 checkpoint 的真实生成/JEV 评分开发验收；27B/VL 使用原精度 TP=2，VL 协议包含真实图片。64 次开发矩阵仅覆盖一个 MiniGrid 任务和两个 seed，正式 benchmark 与算法效果验证尚未完成。9B 独立 B0/B3 smoke 因 4096 上下文超限而失败；矩阵采用不同记忆配置，不能覆盖这些失败。
 
 ## 运行一个闭环
 
@@ -38,10 +38,10 @@ JevGO 第一版实现冻结参数的显式研究状态、LLM 候选、JEV 辅助
 
 | backend | 生成与评分 | 验证状态 |
 | --- | --- | --- |
-| `jev_9b` | 同一 vLLM 服务的基座生成、LoRA decision head；客户端 logits/bias/温度路径 | CPU 协议通过；真实推理待验收 |
-| `jev_27b` | 基座生成及本地 `/v1/decide` | CPU 协议通过；真实推理待验收 |
-| `jev_27b_vl` | 文本/图像生成及 typed decide；最大并发序列 8 | CPU 协议通过；真实 VL 请求待验收 |
-| `semif` | 同一冻结 Qwen3.5-4B 实例的生成与 direct scorer | 随机小模型通过；真实 4B 推理待验收 |
+| `jev_9b` | 同一 vLLM 服务的基座生成、LoRA decision head；客户端 logits/bias/温度路径 | 真实生成/评分协议通过；独立长轨迹存在上下文超限 |
+| `jev_27b` | 基座生成及本地 `/v1/decide` | 原精度 TP=2 的真实生成/评分协议通过 |
+| `jev_27b_vl` | 文本/图像生成及 typed decide；最大并发序列 8 | 原精度 TP=2 的真实图片协议通过；开发矩阵使用文本 |
+| `semif` | 同一冻结 Qwen3.5-4B 实例的生成与 direct scorer | 真实 4B 生成/评分通过；开发矩阵仍有无效候选与预算失败 |
 
 模型目录、基座及 revision 读取 `configs/jevgo.yaml`，不由简称猜测。AutoTrust 不自动启动服务；SemIf 在进程内加载本地 CUDA 权重。客户端不下载权重、不隐式重试或量化。SemIf 的偏好未校准；JEV 的候选、证据、停止及启发式状态评分语义分别记录。
 
@@ -59,6 +59,16 @@ GPU 主机移除 `--dry-run` 启动，再执行真实协议检查：
   --model jev_9b --base-url http://127.0.0.1:8009 \
   --max-model-len 4096 --output /tmp/jevgo-9b-check
 ```
+
+已验证的 A40 多卡启动示例（先检查实际可用卡并按需替换设备号）：
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 .venv/bin/python -m jevgo.models.serve_autotrust \
+  --model jev_27b --assets-root "$PWD" --port 8027 \
+  --max-model-len 4096 --tensor-parallel-size 2
+```
+
+27B-VL 使用 `--model jev_27b_vl --port 8028`，同样显式设置 TP=2；其最大并发序列仍不超过 8。TP 默认 1，不会自动选择或增加设备。
 
 VL 检查另传 `--image /绝对路径/公开观测.png`。检查包含生成与三个评估角色，保存请求、响应及成本；成功不代表 benchmark 效果。客户端和服务的 max_model_len 必须一致。
 
@@ -93,3 +103,9 @@ CPU 验收矩阵包含两 seed、四方法和 B3 的四个单项消融：
 分析重新加总事件中的成本，并核对 ledger/result、预算、任务和 seed。失败、未运行与跳过不算成功；成本未知时保留客观成功，但不算已证实的预算内成功。不同实际 backbone/revision/adapter、模态、环境与预算分开比较；报告覆盖率、成本、Wilson 区间及比较是否满足条件，不把不同环境的原始得分直接平均。
 
 长期价值训练、策略微调、SemIf 缓存优化、通用命令行实验环境均为后续范围。
+
+## 正式评测前的预试
+
+现有 4096 是本轮运行上限，不是 checkpoint 声明的原生容量。四模型本地配置声明 262144 tokens；尚未验证本机完整 256K 运行。扩大上下文需同时校验提示 token 数、输出预留、记忆长度、服务/客户端一致性和显存，单独保存新配置与结果。
+
+开发矩阵每任务累计预算为 1000 次模型请求、1000 次环境步、200 万输入 tokens、20 万输出 tokens；搜索、评分和恢复均消耗预算。扩大单次窗口不会增加这些累计预算。先复验 9B 独立闭环、诊断 SemIf 候选拒绝及成本来源，再冻结多任务、多 seed 的正式协议；同一生成基座内比较 B0–B3，模型与模态分组报告。

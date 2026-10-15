@@ -1,10 +1,12 @@
-# 独立 GPU 验收交接
+# GPU 开发验收与后续复核交接
 
 本文件可交给新对话独立执行。研究目标是检验冻结 LLM、JEV 和 MCTS 是否改善自动研究/交互任务成功率，并核算额外成本；不预设提升。先读 `AGENTS.md`、autoresearch skill、`docs/autoresearch.md` 和本目录 `CONTRACTS.md`。本任务定位 AR-2/4/5/6/7、EVAL；不训练。
 
 ## 已完成与待完成
 
-CPU 已完成公共契约、真实 MiniGrid 四方法闭环、AutoTrust 协议、SemIf 随机小模型、三个可恢复环境适配及 DiscoveryWorld 在线适配。真实 checkpoint 推理与正式研究效果均尚未验收。本次机器 `nvidia-smi` 无法连接驱动，不把权重存在或 mock 通过当作 GPU 通过。
+截至 2026-10-15，CPU 首版验收及四模型真实生成/评分开发验收已完成；VL 含实图，27B/VL 使用原精度 TP=2，SemIf 使用元数据修复。原 64 次矩阵和失败以 [ACCEPTANCE.md](ACCEPTANCE.md) 为准，正式 benchmark/算法效果仍 pending。9B 独立 B0/B3 smoke 均因 4096 上下文超限失败，不由不同记忆配置的矩阵结果覆盖。
+
+下面命令用于后续复核，不能把历史独立分支的结果改标为集成版本结果。四项修复的统一版本及组合验收见 [P13](P13-gpu-integration.md)。GPU 主机驱动正常；历史沙箱设备不可见的排查按 [GPU 访问 skill](../../skills/jevgo-gpu-access/SKILL.md) 执行。
 
 - 集成分支：`codex/autoresearch`；代码基线取本目录 `ACCEPTANCE.md` 和开始执行时的 `git rev-parse HEAD`。
 - 项目/共享资源根：`/mnt/nas-tianwen/home/ssy/JevGO`，旧小写 `jevgo` 目录不存在。
@@ -34,11 +36,11 @@ git rev-parse HEAD > "$JEVGO_GPU_OUT/commit.txt"
 nvidia-smi -q > "$JEVGO_GPU_OUT/hardware.txt" 2>&1
 ```
 
-若硬件命令失败，保存错误及驱动/GPU可见性，停止依赖 GPU 的步骤。不要把此情况写成算法失败。
+若硬件命令失败，先保存当前权限上下文，并按 GPU 访问 skill 在工具允许的设备可见上下文最小复核；只有复核仍无法使用时，才将 GPU 步骤记为资源阻塞。不要把沙箱不可见写成主机驱动损坏或算法失败。
 
 ## 先验收 9B
 
-在独立终端前台启动服务，保存 stdout/stderr 和 PID；先加 `--dry-run` 检查本地命令，然后移除。不要同时占用多个大模型服务。
+在独立终端前台启动服务，保存 stdout/stderr 和 PID；先加 `--dry-run` 检查本地命令，然后移除。并行时为每个服务明确分配互不重叠的可用 GPU，记录映射；退出时只清理本轮启动的进程。
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 "$JEVGO_PY" -B -m jevgo.models.serve_autotrust \
@@ -73,11 +75,19 @@ CUDA_VISIBLE_DEVICES=0 "$JEVGO_PY" -B -m jevgo.models.serve_autotrust \
 
 | 模型 | 启动 --model | --port / check --base-url | 附加检查 |
 | --- | --- | --- | --- |
-| 27B | jev_27b | 8027 / http://127.0.0.1:8027 | `/v1/decide` 内部请求数及 fallback usage |
-| 27B-VL | jev_27b_vl | 8028 / http://127.0.0.1:8028 | 启动命令并发不超 8，真实本地图像请求 |
+| 27B | jev_27b | 8027 / http://127.0.0.1:8027 | `CUDA_VISIBLE_DEVICES=0,1`、`--tensor-parallel-size 2`；typed decide 内部请求及 usage |
+| 27B-VL | jev_27b_vl | 8028 / http://127.0.0.1:8028 | 两张可用卡、`--tensor-parallel-size 2`；并发不超 8，真实图像请求 |
 | SemIf | 不启动 HTTP 服务 | 不传 base-url | 同一冻结实例 `.generate` 与 direct scorer，未校准标签保留 |
 
-27B/27B-VL 的启动与 model-check 命令沿用上一节，仅替换表中模型/端口、独立输出名。客户端和服务 max_model_len 都保持 4096。
+27B/27B-VL 的 model-check 命令沿用上一节，替换模型/端口及独立输出名；服务启动另加 `--tensor-parallel-size 2` 并暴露两张可用 GPU。例如：
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 "$JEVGO_PY" -B -m jevgo.models.serve_autotrust \
+  --model jev_27b --assets-root "$JEVGO_ASSETS_ROOT" \
+  --host 127.0.0.1 --port 8027 --max-model-len 4096 --tensor-parallel-size 2
+```
+
+设备号是示例，以实时占用为准。客户端和服务 max_model_len 都保持 4096；扩大窗口属于新的预试条件，需要新输出目录。声明的 262144 原生上下文不等于已验证本机支持 256K。
 
 SemIf 直接执行：
 

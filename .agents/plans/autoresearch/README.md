@@ -3,7 +3,7 @@
 ## 目标与范围
 冻结参数，贯通显式状态、LLM候选、JEV评估、真实执行、MCTS和终止。先MiniGrid，再ALFWorld、ScienceWorld、DiscoveryWorld；沿用当前三个AutoTrust checkpoint和SemIf。
 默认 learning_mode=none；其他模式显式报未实现。首轮交付CPU算法/真实环境验收及GPU交接，不将mock、下载成功或小fixture当作模型效果。
-用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。GPU推理与完整效果评测待外部资源。
+用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。截至2026-10-15，四模型真实生成/评分及64次开发矩阵已完成；GPU修复统一集成见P13。正式benchmark与算法效果仍待验证。
 
 ## 任务表
 | 任务 | 环节 | 依赖 | 状态 |
@@ -11,16 +11,17 @@
 | [P00 文档与开发基线](P00-baseline.md) | 协作 | 无 | cpu_verified |
 | [P01 共享契约与账本](P01-core.md) | AR-0/4/5/7 | P00 | cpu_verified |
 | [P02 MiniGrid适配](P02-minigrid.md) | AR-0/4 | P01 | cpu_verified |
-| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | cpu_verified_gpu_pending |
-| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | cpu_verified_gpu_pending |
+| [P03 AutoTrust后端](P03-autotrust.md) | AR-2/5/6/7 | P01 | gpu_protocol_verified_integration_recheck_pending |
+| [P04 SemIf后端](P04-semif.md) | AR-2/5/6/7 | P01 | gpu_protocol_verified_integration_recheck_pending |
 | [P05 研究状态转换](P05-research.md) | AR-2/3/5/7 | P01 | cpu_verified |
 | [P06 MCTS引擎](P06-mcts.md) | AR-1/6 | P01 | cpu_verified |
 | [P07 运行器与四种方法](P07-runner.md) | AR-0至7 | P02,P03,P04,P05,P06 | cpu_verified |
 | [P08 ALFWorld适配](P08-alfworld.md) | AR-0/4 | P01 | cpu_verified_fixture_only |
 | [P09 ScienceWorld适配](P09-scienceworld.md) | AR-0/4 | P01 | cpu_verified |
 | [P10 DiscoveryWorld适配](P10-discoveryworld.md) | AR-0/4 | P01 | cpu_verified_online_only |
-| [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | cpu_verified_fixture_only |
-| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | cpu_verified_gpu_handoff_ready |
+| [P11 评测与分析](P11-evaluation.md) | EVAL | P07 | development_matrix_verified |
+| [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | development_gpu_round_complete |
+| [P13 GPU修复统一集成](P13-gpu-integration.md) | EVAL、AR-2/5/7 | P03,P04,P11,P12 | integration_in_progress |
 
 ## 依赖与调度
 P00 → P01；P02/P03/P04/P05/P06/P08/P09/P10随后可独立开发。P07等待P02至P06；P11等待P07；P12等待P08至P11及传递依赖。
@@ -43,7 +44,7 @@ B0顺序LLM；B1 JEV重排贪心；B2无JEV MCTS；B3完整方法。候选/工�
 2. 环境：真实reset/step、成功语义、恢复能力实测。
 3. 模型：指定checkpoint真实生成评分；硬件、配置、token及内部请求。
 4. 研究：固定任务seed/权限/预算的对比与消融，报告成功率/成本，不预设增益。
-当前交付前两层及后两层工具/交接。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
+前三层的已述范围及开发矩阵已完成；统一修复版正在组合验收，第四层正式研究效果未完成。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
 
 ## 外部交接
 任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档已用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
