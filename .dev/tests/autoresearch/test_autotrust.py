@@ -377,6 +377,48 @@ def test_launch_is_local_offline_and_lora_flags(assets, model):
         assert int(command[command.index("--max-num-seqs") + 1]) <= 8
 
 
+@pytest.mark.parametrize("model", ["jev_9b", "jev_27b", "jev_27b_vl"])
+def test_explicit_tensor_parallel_launch_preserves_other_settings(assets, model):
+    default_command, default_env = build_launch(model, assets_root=assets)
+    single_command, single_env = build_launch(model, assets_root=assets, tensor_parallel_size=1)
+    assert single_command == default_command and single_env == default_env
+    assert "--tensor-parallel-size" not in default_command
+
+    command, env = build_launch(model, assets_root=assets, tensor_parallel_size=2)
+    index = command.index("--tensor-parallel-size")
+    assert command[index + 1] == "2"
+    assert command[:index] + command[index + 2:] == default_command
+    assert env == default_env
+    if model == "jev_27b_vl":
+        assert int(command[command.index("--max-num-seqs") + 1]) <= 8
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "2", None])
+def test_tensor_parallel_size_requires_a_positive_integer_before_path_access(tmp_path, value):
+    with pytest.raises(ValueError, match="tensor_parallel_size must be a positive integer"):
+        build_launch("jev_27b", assets_root=tmp_path / "missing", tensor_parallel_size=value)
+
+
+@pytest.mark.parametrize("model", ["jev_27b", "jev_27b_vl"])
+def test_tensor_parallel_cli_dry_run_without_gpu_imports(assets, model, capsys, monkeypatch):
+    import builtins
+    original_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name.split(".")[0] in {"vllm", "torch"}:
+            pytest.fail("dry run cannot import GPU runtime")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    monkeypatch.setattr("jevgo.models.serve_autotrust.os.execvpe", lambda *args: pytest.fail("dry run cannot exec"))
+    assert main(["--model", model, "--assets-root", str(assets),
+                 "--tensor-parallel-size", "2", "--dry-run"]) == 0
+    command = json.loads(capsys.readouterr().out)["command"]
+    assert command[command.index("--tensor-parallel-size") + 1] == "2"
+    if model == "jev_27b_vl":
+        assert int(command[command.index("--max-num-seqs") + 1]) <= 8
+
+
 def test_launcher_rejects_vl_excess_concurrency_and_missing_shards(assets):
     config_path = assets / "configs/jevgo.yaml"
     config = yaml.safe_load(config_path.read_text())
