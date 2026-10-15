@@ -5,7 +5,7 @@
 
 定位：AR-2/5/6/7。先说明本次输入输出、上下游和验证方式。前置任务：P01。
 首选 Agent：gpt-6-astra，reasoning_effort=ultra。
-状态：gpu_protocol_verified_integration_recheck_pending。主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
+状态：gpu_protocol_verified_integrated。主控在派发前记录实际 base SHA，在交付后记录 commit、准确命令、退出码和证据。
 
 背景：[长期目标](../../skills/jevgo-autoresearch/references/project-goal.md)、[总计划](README.md)、[共享契约](CONTRACTS.md)。
 
@@ -15,7 +15,7 @@
 只修改以下范围：jevgo/models/autotrust.py;jevgo/models/serve_autotrust.py;.dev/tests/autoresearch/test_autotrust.py。共享接口/配置由owner统一改；其他范围变更先向主控报告。使用独立worktree，不能在共享主工作区切分支。
 
 ## 验收标准
-HTTP fixture验证选项、计算、路由、错误和成本；无隐式下载；真实GPU待验收。
+HTTP fixture验证选项、计算、路由、错误和成本；无隐式下载；真实GPU协议单独记录执行版本、身份和成本，当前结果见下方更新。
 
 验收命令：
 ```bash
@@ -36,7 +36,7 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 - 只本地提交本任务范围；回传SHA、命令/退出码、证据、验证层级和剩余事项，由主控合入集成分支。
 - 再拆分时向主控提交依赖和子任务，不自行占用更多agent槽位。新对话凭本文件及契约即可接手。
 
-## 当前执行记录
+## 初始 CPU 交付记录（历史）
 
 - 基线：`38a0f5d`。
 - 交付 commit：`3e6b3ae + d284cbc`。
@@ -46,4 +46,4 @@ JEVGO_ASSETS_ROOT=/mnt/nas-tianwen/home/ssy/JevGO /mnt/nas-tianwen/home/ssy/JevG
 
 ## 2026-10-15 更新
 
-独立修复版本已完成真实 GPU 生成/评分开发验收，历史执行 commit 和失败见 ACCEPTANCE.md。四项修复已合入集成分支，统一版本的组合回归和协议复核按 [P13](P13-gpu-integration.md) 进行。正式研究效果仍待验证。
+独立修复版本已完成真实 GPU 生成/评分开发验收，历史执行 commit 和失败见 ACCEPTANCE.md。四项修复已合入集成分支，统一版本8921479的组合回归及真实GPU协议复核已通过，见 [P13](P13-gpu-integration.md)。正式研究效果仍待验证。

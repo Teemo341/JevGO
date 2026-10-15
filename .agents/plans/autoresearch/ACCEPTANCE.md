@@ -1,6 +1,6 @@
 # JevGO 首版集成验收
 
-验收日期：2026-10-14。本地集成分支：`codex/autoresearch`。项目和共享资源根：`/mnt/nas-tianwen/home/ssy/JevGO`。
+首版CPU验收日期：2026-10-14；GPU开发及P13统一版本补验：2026-10-15。本地集成分支：`codex/autoresearch`。项目和共享资源根：`/mnt/nas-tianwen/home/ssy/JevGO`。
 
 P00–P12 代码、任务文档及 GPU 交接已集成；参数冻结，`learning_mode=none`。独立实现分支与 worktree 保留，未推送。实现与审查子 Agent 使用 gpt-6-astra / ultra，按主控、两名实现、一名审查调度。
 
@@ -10,7 +10,7 @@ P00–P12 代码、任务文档及 GPU 交接已集成；参数冻结，`learnin
 | --- | --- |
 | 算法单元 | 通过。显式状态、原始证据、分支隔离、单智能体 PUCT、真实 rollout、准确回传、预算预留、失败和中断行为均有确定性测试。 |
 | 真实环境 | MiniGrid、ALFWorld 小型 TextWorld fixture、ScienceWorld JVM 实际 reset/step 和恢复通过。DiscoveryWorld 实际进程/观测/图像隔离通过，恢复验证失败时保留在线模式并拒绝 MCTS。 |
-| 真实模型 | **本轮 GPU 验收已完成（2026-10-15）**。四模型真实生成/评分通过（VL 含实图；SemIf 使用独立修复）；矩阵及独立 smoke 的客观结果和失败分别保留，详见下方。 |
+| 真实模型 | **GPU开发及统一版本复核已完成（2026-10-15）**。四模型真实生成/评分通过（VL含实图）；四项修复已集成，统一代码8921479的协议复核亦通过，见文末P13；矩阵及独立 smoke 的客观结果和失败分别保留，详见下方。 |
 | 研究效果 | **正式 benchmark 待验收**。本轮仅为两 seed、单个 MiniGrid 任务的开发 smoke；不支持模型精度排名或算法提升结论。 |
 
 ## 全套 CPU 回归
@@ -107,7 +107,7 @@ export JEVGO_PY=/mnt/nas-tianwen/home/ssy/JevGO/.venv/bin/python
 <!-- gpu-20261014-w1d2iqko:start -->
 ## GPU 验收本轮结果（2026-10-14–2026-10-15，已完成）
 
-起始 HEAD：`b198861f8dc5ea5d50d4e244af1a404e54877c2c`；记录完成时实际 HEAD：`b198861f8dc5ea5d50d4e244af1a404e54877c2c`，分支 `codex/autoresearch`。复用已有 .venv、权重和资源，`learning_mode=none`；没有安装、下载、量化、替换 checkpoint 或训练。实现修复均在独立分支/worktree，未合入集成分支。
+起始 HEAD：`b198861f8dc5ea5d50d4e244af1a404e54877c2c`；记录完成时实际 HEAD：`b198861f8dc5ea5d50d4e244af1a404e54877c2c`，分支 `codex/autoresearch`。复用已有 .venv、权重和资源，`learning_mode=none`；没有安装、下载、量化、替换 checkpoint 或训练。该轮记录时，实现修复均在独立分支/worktree，尚未合入集成分支；后续统一验收见文末P13。
 
 本轮 [机器可读验收报告](../../../.dev/artifacts/gpu-20261014-w1d2iqko/acceptance-report.json)、[逐方法/消融成本表](../../../.dev/artifacts/gpu-20261014-w1d2iqko/matrix-costs.csv) 和 [命令、退出码及原始标准输出/错误](../../../.dev/artifacts/gpu-20261014-w1d2iqko/commands/) 保留完整证据。验收完成指所有要求的执行、审计及清理已结束，不表示所有测试通过或所有任务成功。报告中的 completed_with_errors 保留模型输出拒绝等错误，具体原因见终止分类。
 
@@ -172,3 +172,29 @@ SemIf 原始协议在模型加载后的 TorchVersion 元数据校验处失败（
 
 当前仅完成开发 smoke 和实现验收，研究效果仍 pending。两 seed、单任务不支持完整 benchmark、模型精度排名或算法提升结论。VL 矩阵使用 text 观测，实图协议不能混入算法增益；ALFWorld 正式数据缺失和 DiscoveryWorld B2/B3 恢复限制仍沿用上方记录，不在本轮强行替代验证。
 <!-- gpu-20261014-w1d2iqko:end -->
+
+
+## P13 统一修复版集成验收（2026-10-15）
+
+本节记录后续独立复核，原开发验收的推理版本、64次运行、成本与失败事实均保留。四项修复已审查并合入 `codex/autoresearch`，受测提交为 `89214798653679b143006c4ce0e99b1c36ad71f4`；原用户验收记录和技能变更先完整保存为 `50963de`。本节之后的收尾提交仅更新文档，不改变受测运行代码。
+
+**组合 CPU 回归：197 passed，133.82秒，退出码0，无跳过**。覆盖 AutoTrust 70、SemIf 46、评测24、CLI 22、共享契约25、发布10项；没有重跑完整测试集，不能与历史277/72及独立分支测试数相加。命令和源文件哈希见 [CPU报告](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/combined-cpu-report.json)，[JUnit](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/combined-cpu-junit.xml) 和 [输出](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/combined-cpu-pytest.txt)。发布归档的 B0/B3 真实 MiniGrid fixture 闭环再次通过，详见 [发布报告](../../../.dev/artifacts/P12/release-892147986536-nrtdq3je/acceptance.json)；仍不代表新机器全新安装或真实模型任务成功。
+
+**统一版本真实 GPU 协议：四模型全部通过，共16次实际模型请求**。每模型完成一次生成及 candidate/evidence/stop 三次评分；生成非空，评分维度2/1/1、原选项对应、有限分数、身份记录和费用逐项重算均通过。27B/VL 原精度 TP=2；VL四请求均含原公开图片；SemIf继续使用同一个冻结 Qwen3.5-4B 实例，偏好未校准。统一窗口4096，本次协议生成上限128，不改变旧矩阵或独立smoke的条件。
+
+| 模型 | 物理GPU | TP | 实际请求 | 输入tokens | 输出tokens |
+| --- | --- | ---: | ---: | ---: | ---: |
+| jev_9b | 2 | 1 | 4 | 396 | 16 |
+| jev_27b | 0,1 | 2 | 4 | 396 | 21 |
+| jev_27b_vl | 0,1 | 2 | 4 | 6,548 | 18 |
+| semif | 3 | 1 | 4 | 588 | 20 |
+
+这些是协议复核的新增成本，与原64次矩阵分开。服务启动、编译和模型加载不含在账本插桩 `wall_seconds` 内；不用于模型速度比较。模型revision来自既有本地配置并与实际启动路径/资源记录交叉核对，不宣称HTTP独立证明revision。
+
+[9B/SemIf汇总](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/small-models/summary.json)、[27B/VL汇总](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/tp-models/summary.json) 保存原始请求/响应位置、真实执行提交、设备与清理。27B/VL首次启动因控制器的临时目录过长触发ZeroMQ IPC路径限制，未发送任何协议推理请求；失败证据完整保留，换成独立短临时路径后复验通过，checkpoint/精度/TP/窗口均未变。[重试说明](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/tp-models/attempt-correction.json) 区分启动失败和推理失败。
+
+**历史64次纯审计：结果及成本全部不变，新增模型请求0**。新版本只重算原事件，保存 [审计索引](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/reaudit-index.json)；原验收报告和manifest哈希未改变，原推理执行commit也未改标。此轮没有新增benchmark矩阵。
+
+**清理及下一步**：本轮服务、客户端及控制进程均已清理，18109/18127/18128端口关闭，最终GPU计算进程清单为空；[主机复核](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/final-host-cleanup.json) 记录实时证据，没有终止其他使用者进程。完整 [机器可读集成报告](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/integration-report.json) 的 `integration_acceptance_complete=true`、`research_effectiveness=pending`。
+
+9B旧B0/B3上下文失败及失败请求未知usage仍保留，本次短协议不能证明长闭环已修复。上下文扩大、SemIf候选格式和搜索成本预试见 [P14任务卡](P14-pretrial.md)，目前仅准备文档、未执行。ALFWorld正式数据、DiscoveryWorld恢复及正式效果评测的前置限制仍适用。

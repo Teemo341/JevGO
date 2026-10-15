@@ -15,7 +15,7 @@ CPU验证首版及外部GPU执行包。
 只修改以下范围：docs/autoresearch.md;README.md;.agents/plans/autoresearch/**;.dev/tests/autoresearch/test_release.py。共享接口/配置由owner统一改；其他范围变更先向主控报告。使用独立worktree，不能在共享主工作区切分支。
 
 ## 验收标准
-CPU结果有证据；GPU检查有命令判据；未做真推理与完整benchmark保持待验收。
+CPU结果有证据；GPU检查有命令判据；未完成的验证项目明确标为待验收；真实推理开发验收与正式benchmark分开记录。
 
 验收命令：
 ```bash
