@@ -47,7 +47,11 @@ P14b结论后再执行P14c。若256持续妨碍格式，依据b写明统一512�
   --output /root/JevGO/.dev/artifacts/P14-20261017-pretrial/c/loops/output256-sim8-cost.json
 ```
 
-P14c固定4候选、树深4、rollout2、memory4、window4096、seed0，最多2实际提交；两条条件同500env/500req/1M输入/100k输出累计预算。分析逐条核对events/ledger/result，明确初始化验证、每实际提交和未完成tail；每段生成/各judge逻辑调用与内部请求、input/output、搜索环境操作、restore/replay单独报告。replay已含在env_steps，不能再加一次。预算挡住提交只算诊断，不能称闭环通过；两条短run不证明算法效果。`wall_seconds`仍非端到端时延。
+P14c固定4采样、树深4、rollout2、memory4、window4096、seed0，`run.max_steps=2` 最多2实际提交，同时显式 `episode.options.max_steps=20` 保留历史环境步数上限；两条条件同500env/500req/1M输入/100k输出累计预算。配置4采样不保证4个不同候选，实际去重候选数和逐item评分请求须从事件另查。
+
+`factory` 默认将 `run.max_steps` 传作MiniGrid环境上限。首次P14c的env2/run2两臂因此截断搜索；原产物完整保留，单列为horizon2诊断，不能据此诊断树深4/rollout2。已执行的纠正条件env20/run2保存在独立 `horizon20-*` 目录，仍使用当时实际提交955df14；之后的开发工具修正仅使新的 `prepare` 自动生成env20/run2，不改写历史执行版本，也不要求重跑已执行条件。不要覆盖已有prepared/conditions目录。
+
+分析逐条核对events/ledger/result，明确初始化验证、每实际提交和未完成tail；每段生成/各judge逻辑调用与内部请求、input/output、搜索环境操作、restore/replay单独报告。replay已含在env_steps，不能再加一次。预算挡住提交只算诊断，不能称闭环通过；两条短run不证明算法效果。`wall_seconds`仍非端到端时延。
 
 CPU验证：
 

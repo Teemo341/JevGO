@@ -158,6 +158,11 @@ def prepare(evidence_root: Path, output_root: Path) -> dict:
                     source = json.loads((evidence_root / relative / "config.json").read_text())
                     payload = {"episode": source["episode"], "run": source["run"], "model": {"backend": "semif", "max_model_len": 4096, "dtype": "bfloat16"}}
                     payload["episode"]["episode_id"] = f"p14{stage}-output{reserve}-seed{seed}-sim{simulation}"
+                    if stage == "c":
+                        # factory's default environment horizon follows run.max_steps.
+                        # Keep the historical environment horizon while bounding
+                        # actual commits, so depth4/rollout2 can execute as declared.
+                        payload["episode"]["options"]["max_steps"] = 20
                     payload["run"].update(method="B0" if stage == "b" else "B3", learning_mode="none",
                                           seed=seed, max_steps=max_steps, candidate_count=4, simulations=simulation,
                                           max_depth=4, rollout_depth=2, budget=budget)
