@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+control="$(cd -- "$(dirname -- "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd -P)"
+source "$control/runtime.sh"
+python_bin="$JEVGO_ROOT/.tools/python/cpython-$(cat "$JEVGO_ROOT/.python-version")-linux-x86_64-gnu/bin/python3.11"
+command="${1:-check}"
+if (($#)); then shift; fi
+cd "$JEVGO_ROOT"
+case "$command" in
+    plan|sync|check)
+        exec "$python_bin" "$control/environment.py" --project "$JEVGO_ROOT" --storage "$JEVGO_STORAGE" "$command" "$@"
+        ;;
+    update-code)
+        [[ -z "$(git status --porcelain --untracked-files=no)" ]] || { echo 'Tracked edits exist; refusing to update.' >&2; exit 2; }
+        if [[ -f /etc/network_turbo ]]; then
+            set +u; source /etc/network_turbo >/dev/null 2>&1; set -u
+        fi
+        git -c credential.helper= -c core.sshCommand=false fetch origin main
+        git merge-base --is-ancestor HEAD origin/main || { echo 'Local commits diverge from GitHub; refusing to update.' >&2; exit 2; }
+        git merge --ff-only origin/main
+        git rev-parse HEAD
+        ;;
+    models)
+        if [[ "${1:-}" == download ]]; then
+            echo 'Model downloads are disabled: upload the local models/ directory over SSH/rsync to /root/autodl-fs/JevGO/models, then run jevgo-autodl models link.' >&2
+            exit 2
+        fi
+        exec "$python_bin" "$control/shared_models.py" --project "$JEVGO_ROOT" --shared-models "$JEVGO_SHARED_MODELS" "$@"
+        ;;
+    storage)
+        exec "$python_bin" "$control/run_storage.py" "$@" --project "$JEVGO_ROOT"
+        ;;
+    run)
+        [[ -x "$JEVGO_ROOT/.venv/bin/python" ]] || { echo 'Run sync first.' >&2; exit 2; }
+        [[ "$(cat "$JEVGO_ROOT/.venv/.jevgo-location" 2>/dev/null)" == "$JEVGO_ROOT" ]] || exit 2
+        [[ $# -gt 0 ]] || { echo 'Usage: jevgo-autodl run COMMAND [ARGS...]' >&2; exit 2; }
+        "$python_bin" "$control/environment.py" --project "$JEVGO_ROOT" --storage "$JEVGO_STORAGE" check >/dev/null
+        exec "$@"
+        ;;
+    *) echo 'Usage: jevgo-autodl {plan|sync|check|update-code|models {list|check|link|ensure}|storage {prepare|check}|run COMMAND...}' >&2; exit 2 ;;
+esac

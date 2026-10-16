@@ -1,0 +1,4 @@
+interface:
+  display_name: "JevGO AutoDL 备用 GPU"
+  short_description: "本地 GPU 不足时，在 AutoDL 运行模型实验、取回结果并按需关机"
+  default_prompt: "使用 $jevgo-autodl 判断本地 GPU 是否足够；不足时准备 AutoDL、运行实验并取回日志。"
