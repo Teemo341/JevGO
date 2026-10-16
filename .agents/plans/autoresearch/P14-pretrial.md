@@ -39,6 +39,6 @@ P14a/P14b 可以并行，分别使用计划分支 `codex/ar-p14a-context`、`cod
 
 ## 交接与完成条件
 
-当前状态：implementation_in_progress_gpu_resource_pending。工具与离线检查正在独立工作树完成，尚无本轮真实模型实验结果。主产物目录为 `.dev/artifacts/P14-20261017-pretrial/`；启动状态、GPU 准入及历史来源哈希分别见 `startup.json`、`local-resource-check.json`、`historical-source-verification.json`。沙箱内 nvidia-smi rc9，主机侧 rc0，现有 PyTorch CUDA 正常；四张 A40 均由其他用户任务占用，每卡约 6 GiB 剩余，不满足 4B/9B 空闲卡规则。先完成代码审查/测试与 GitHub 同步，再按 AutoDL 技能申请本轮有效 SSH；不得复用历史端口。
+当前状态：tools_accepted_gpu_resource_blocked。P14a/P14b/c 开发工具已审查合入并为 AutoDL 推送至 `c9ed2eb389300cb227b8364bffc39361e8df6897`；后端116项、集成工具33项CPU检查通过，独立审查通过。离线检查已完成，但本轮真实模型请求仍为0，四个9B闭环、八个SemIf探针和两组搜索成本条件未执行。主产物 `.dev/artifacts/P14-20261017-pretrial/`；[阶段报告](P14-RESULTS.md) 区分能力、证据、资源阻塞与未验证项。主机CUDA正常，但四卡仍由其他用户占用；已按AutoDL技能申请本轮免密SSH，等待有效端点，不使用历史端口。P14尚未完成，不能据此进入P15。
 
 完成时提交开发工具/必要修复及测试commit，回传每个条件的配置与结果索引，明确通过、失败或资源阻塞。P14只提出依据充分的参数候选；之后另立P15冻结多任务、多seed、开发/测试划分、主预算、失败分类及同基座对比协议，再执行正式矩阵。
