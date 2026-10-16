@@ -187,3 +187,43 @@ def test_actual_cpu_loop_segments_and_precommit_budget_stop(tmp_path):
     stopped = costs.analyze(tmp_path / "stopped")
     assert stopped["termination_reason"] == "budget_exhausted" and stopped["committed_steps"] == 0
     assert not stopped["completed_requested_commits_or_objective_success"]
+
+
+def test_fresh_prepare_separates_actual_environment_horizon_and_commit_limit(tmp_path, monkeypatch):
+    """The saved config must actually reach factory/reset with env20 and run2."""
+    from jevgo.core import BudgetLedger, EpisodeSpec, RunConfig
+    from jevgo.factory import build_environment, run_from_dict
+
+    sources = (("seed0", "a0"), ("seed0", "a1"), ("seed1", "b0"), ("seed1", "b1"))
+    evidence = tmp_path / "evidence"
+    for seed in (0, 1):
+        directory = evidence / f"seed{seed}"
+        directory.mkdir(parents=True)
+        source = {"episode": EpisodeSpec(environment="minigrid", task="MiniGrid-Empty-5x5-v0",
+                                        seed=seed, options={"verify_replay": True}).model_dump(mode="json"),
+                  "run": RunConfig(max_steps=20, seed=seed).model_dump(mode="json")}
+        (directory / "config.json").write_text(json.dumps(source))
+    monkeypatch.setattr(pretrial, "SOURCES", sources)
+    # Request extraction has separate tests; this fixture isolates config assembly.
+    monkeypatch.setattr(pretrial, "extract_case", lambda path, identifier: {
+        "case_id": identifier, "request": pretrial.GenerationRequest(prompt="fixture").model_dump(mode="json"),
+        "original_text": "{"})
+    output = tmp_path / "prepared"
+    pretrial.prepare(evidence, output)
+    payload = json.loads((output / "c/conditions/output256-seed0-sim8.json").read_text())
+    episode = EpisodeSpec.model_validate(payload["episode"])
+    config = RunConfig.model_validate(payload["run"])
+    environment = build_environment(episode, config, assets_root=ROOT, output_dir=tmp_path / "adapter")
+    try:
+        environment.reset(episode, ledger=BudgetLedger())
+        assert environment._env.unwrapped.max_steps == 20
+        assert config.max_steps == 2
+    finally:
+        environment.close()
+    # Also exercise the actual runner limit. The fixture's first2 actions do not
+    # finish the task; env20 must not report environment truncation at commit2.
+    payload["model"] = {"backend": "deterministic"}
+    result = run_from_dict(payload, assets_root=ROOT, output_dir=tmp_path / "loop")
+    assert len(result.final_state.actions) == 2
+    assert result.termination_reason.value == "max_steps"
+    assert not result.final_state.truncated
