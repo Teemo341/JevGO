@@ -1,10 +1,10 @@
-# P14 正式实验前预试（待执行）
+# P14 正式实验前预试（执行中）
 
 ## 需求与定位
 
 主环节 EVAL，关联 AR-2 候选、AR-5 记忆及 AR-7 预算。输入为 P13 统一代码与已有失败证据，输出为可复现的上下文、输出预留、记忆和累计预算建议。只做开发预试，不冻结正式评测协议、不训练、不替换或量化 checkpoint。
 
-前置条件：P13 组合 CPU/GPU 验收及自有进程清理完成；源代码基线 `89214798653679b143006c4ce0e99b1c36ad71f4`（后续只含文档的集成提交可一并继承）。开始时记录实际 HEAD 和实时 GPU 占用。
+前置条件：P13 组合 CPU/GPU 验收及自有进程清理完成。`89214798653679b143006c4ce0e99b1c36ad71f4` 是历史受测版本，不是本轮回退目标；其后包含 AutoDL 工具代码变更。本轮于 2026-10-17 从实际 HEAD `523ea16da07b8b5fa67d286c15df2a26220979b0`、集成分支 `codex/autoresearch` 开始。启动工作区仅有其他任务未跟踪的 `.dev/tests/codex_notifications/` 与 `.dev/tools/codex_notifications/`，保留不动。
 
 项目/共享资源：`/mnt/nas-tianwen/home/ssy/JevGO`；解释器为该目录 `.venv/bin/python`。读取 AGENTS、autoresearch、release-layout、gpu-access skill。使用现有冻结资源，不复制/重装环境。
 
@@ -25,7 +25,7 @@
 | P14b SemIf格式 | 用已保存的四个坏请求保持prompt/seed不变，比较256与512输出；保存原输出及EOS/长度证据，严格校验JSON/schema/公开动作。若测简短提示，作为独立单因素条件。 | 每次尝试计费；完整合法候选才通过；74-token语法错单列；不通过人为补全残缺JSON伪造合法输出。必要短B0闭环采用同一开发任务seed0/1。 | P13 |
 | P14c 搜索成本 | 格式问题明确后，SemIf短B3比较8与2次simulation，每次至多2步提交；固定候选数4、深4、rollout2、memory4和窗口。 | 分开报告每次提交对应的生成、各评分角色、实际请求和replay；提交前预算停止不能算闭环通过，不把短预试当效果对比。 | P14b |
 
-P14a/P14b 可以并行，分别使用计划分支 `codex/ar-p14a-context`、`codex/ar-p14b-format` 和 `.dev/worktrees/P14a`、`.dev/worktrees/P14b`（尚未创建），从同一已验代码基线开出。gpt-6-astra / ultra 优先；主控分配不重叠GPU，P14c随后排队。
+P14a/P14b 可以并行，分别使用计划分支 `codex/ar-p14a-context`、`codex/ar-p14b-format` 和 `.dev/worktrees/P14a`、`.dev/worktrees/P14b`（已从实际启动 HEAD 创建）。P14a 与独立审查使用 gpt-6-astra / ultra；P14b/c 使用 gpt-6.1-sol / ultra；主控分配不重叠 GPU，P14c 随后排队。
 
 允许修改开发验证源码 `.dev/tools/`、`.dev/analysis/`、`.dev/tests/` 中各自独占文件及本轮开发配置；实际模型后端、ResearchPolicy或CLI如需变更，先单列修复需求和对应AR定位，由owner在独立分支完成。避免把一次预试配置直接改成默认配置。
 
@@ -39,6 +39,6 @@ P14a/P14b 可以并行，分别使用计划分支 `codex/ar-p14a-context`、`cod
 
 ## 交接与完成条件
 
-当前状态：ready_for_pretrial_not_executed；未执行、无结果commit。下一位执行者无需聊天历史，读取本卡、P13、诊断证据与GPU-HANDOFF后即可准备新条件。
+当前状态：implementation_in_progress_gpu_resource_pending。工具与离线检查正在独立工作树完成，尚无本轮真实模型实验结果。主产物目录为 `.dev/artifacts/P14-20261017-pretrial/`；启动状态、GPU 准入及历史来源哈希分别见 `startup.json`、`local-resource-check.json`、`historical-source-verification.json`。沙箱内 nvidia-smi rc9，主机侧 rc0，现有 PyTorch CUDA 正常；四张 A40 均由其他用户任务占用，每卡约 6 GiB 剩余，不满足 4B/9B 空闲卡规则。先完成代码审查/测试与 GitHub 同步，再按 AutoDL 技能申请本轮有效 SSH；不得复用历史端口。
 
 完成时提交开发工具/必要修复及测试commit，回传每个条件的配置与结果索引，明确通过、失败或资源阻塞。P14只提出依据充分的参数候选；之后另立P15冻结多任务、多seed、开发/测试划分、主预算、失败分类及同基座对比协议，再执行正式矩阵。
