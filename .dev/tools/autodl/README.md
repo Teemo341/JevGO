@@ -5,8 +5,11 @@
 
 **当前 `prepare.sh`、`monitor.sh`、`shutdown.sh` 全部在 AutoDL 执行。105 只通过 SSH 调用它们，绝不能在 105 直接运行。**
 入口部署到 `/opt/jevgo-autodl`，不会被项目 Git 清理删除。三个入口不接收 `--host`/`--port`，
-会在产生副作用前拒绝非 AutoDL 主机。旧 `prepare.py`、`monitor.py`、`shutdown.py` 保留作历史控制器与测试依赖，
-不再是当前操作入口，不沿用旧的本地 `.sh --host ...` 调用方式。
+会在产生副作用前拒绝非 AutoDL 主机。旧的本地控制器已移除，不沿用 `.sh --host ...` 调用方式。
+
+当前仅保留 `remote-control-files.txt` 列出的 21 个远端入口及依赖、本地明确文件打包器 `pack_overlay.py`、
+部署清单和本说明。模型校验模块只负责已有文件的清单、哈希和分片索引校验。
+一次性验收脚本、旧控制器与本地验收产物已清理；历史源码可从 Git 提交 `a50efca` 查看。
 
 ## 存储与镜像约定
 
@@ -211,11 +214,11 @@ bash /opt/jevgo-autodl/shutdown.sh --forbid-hostname LOCAL_HOSTNAME
 从 105 观察关机请求输出和后续 SSH 不可达；不能把一次断连单独当作关机成功，不关闭 105。
 平台脚本发生变化时先只读核实新实现，不能绕过守卫执行普通系统 poweroff。
 
-## 模型上传与首次初始化
+## 首次补齐共享模型
 
-已有镜像正常使用时不重复上传模型/安装环境。首次部署可从 105 使用 `manage.py --host USER@HOST --port PORT bootstrap`，
-它是独立的 SSH 初始化工具，不是上述三个远端生命周期脚本。保留 `.tools`、`.cache/offline` 和复现材料。
-Git clone 不含定制 wheel；当前环境默认离线，缺材料不能换成未锁定网络包。
+本工具面向已配置好的基础镜像，正常使用时不重复上传模型或安装环境。
+保留 `.tools`、`.cache/offline` 和 `.dev/cache/autodl/training-kernels` 中的离线 wheel、构建来源及复现记录。
+Git clone 不含这些二进制材料；缺包时从 105 按 prepare 清单传输，不能换成未锁定网络包。
 
 模型只从 105 已准备的整个 `models/` 经 SSH/rsync 上传。先确认 NAS 真实挂载，复制不加 `--delete`：
 
@@ -238,18 +241,18 @@ rsync -rlt --partial --partial-dir=.rsync-partial --info=progress2 \
 已验证 `causal-conv1d==1.7.0`、`flash-linear-attention==0.5.2`、`fla-core==0.5.2`。
 改变 Python/PyTorch/GPU 时重新核实兼容性，导入成功不代替真实训练。
 
-2026-10-16 新实例测试 `jev27b-fresh-20261016-32751`：准备 27.23 秒、零安装/传包；
-JEV-27B 三步 FP32 LoRA 训练与保存重载通过，峰值分配 50.50 GiB，总耗时 612.55 秒（模型冷加载 536.37 秒）。
-后续一条生成及三条判别通过。证据在 105 `.dev/artifacts/autodl-fresh-20261016-32751/`。
-这是运行兼容性验证，不代表模型效果或训练收敛。
+2026-10-16 已完成新实例闭环（提交 `a50efca`）：旧实例关机、本地资源检查、GitHub 同步、
+用户开启新实例、远端 prepare/monitor、JEV-9B 最小 LoRA 训练、结果取回、本地分析和远端 shutdown。
+prepare 37.30 秒，245 项基线依赖无缺失、零安装；首次 GitHub 请求遇到临时 503，重试后恢复。
+BF16 骨干与 FP32 LoRA 的三步训练、保存及重载通过，峰值分配 17.03 GiB；总耗时 466.52 秒，
+其中模型冷加载 400.52 秒。两个训练快速内核实际参与前后向，重载后输出完全一致。
+NAS checkpoint 共 4 文件、39.84 MiB，重读哈希一致；33 个小结果文件取回 105 后逐个校验通过。
+监控实际识别 GPU 进程并重置计时；本轮主动 shutdown，未等待 30 分钟空闲触发。
+平台关机请求后两次 SSH 均不可达，105 正常运行。
 
-基础镜像需在新实例完成真实训练闭环。完成环境和空间检查后由用户按 AutoDL 控制台流程保存镜像；
-SSH 环境配置/关机不等于镜像已保存。新镜像应包含当前 `/opt/jevgo-autodl` 远端入口。
+此前 JEV-27B 三步 LoRA 保存重载及协议调用也已通过，峰值分配 50.50 GiB。
+这些是运行流程验收，不代表模型效果、训练收敛或其他 batch/序列长度的容量保证。
+清理时当前流程的 265 项 CPU 回归通过；验收测试源码保留在上述 Git 历史中。
 
-## CPU 开发验证
-
-```bash
-PYTHONPATH=.dev/tools/autodl:.dev/tests/autodl .venv/bin/python -m unittest discover -s .dev/tests/autodl -v
-```
-
-CPU 测试使用模拟身份、GPU 和关机函数，不调用真实关机。当前技能的远端入口变更需要独立验收，不能将旧控制器的闭环记录当成新入口已完成真实训练。
+保存基础镜像仍由用户按 AutoDL 控制台流程完成；SSH 环境配置/关机不等于镜像已保存。
+新镜像应包含当前 `/opt/jevgo-autodl` 远端入口。
