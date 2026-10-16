@@ -197,4 +197,13 @@ SemIf 原始协议在模型加载后的 TorchVersion 元数据校验处失败（
 
 **清理及下一步**：本轮服务、客户端及控制进程均已清理，18109/18127/18128端口关闭，最终GPU计算进程清单为空；[主机复核](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/final-host-cleanup.json) 记录实时证据，没有终止其他使用者进程。完整 [机器可读集成报告](../../../.dev/artifacts/gpu-integration-20261015-ng8z3gda/integration-report.json) 的 `integration_acceptance_complete=true`、`research_effectiveness=pending`。
 
-9B旧B0/B3上下文失败及失败请求未知usage仍保留，本次短协议不能证明长闭环已修复。上下文扩大、SemIf候选格式和搜索成本预试见 [P14任务卡](P14-pretrial.md)，目前仅准备文档、未执行。ALFWorld正式数据、DiscoveryWorld恢复及正式效果评测的前置限制仍适用。
+9B旧B0/B3上下文失败及失败请求未知usage仍保留，本次短协议不能证明长闭环已修复。截至P13交接时，上下文扩大、SemIf候选格式和搜索成本预试见 [P14任务卡](P14-pretrial.md)，当时仅准备文档、未执行；P14后续实测见下方更新。ALFWorld正式数据、DiscoveryWorld恢复及正式效果评测的前置限制仍适用。
+
+
+## P14 有限预试更新（2026-10-17）
+
+详见 [P14结果](P14-RESULTS.md)。新增156项不同CPU检查通过，四个9B条件/两协议、八固定SemIf探针/两个短B0以及四个短B3成本条件均已执行并独立审查；实际源码 `955df143e7e2db059cb870e8d4fed9e9741621a2`。全部新推理5971请求、16922181输入/271050输出tokens，含失败/修复/原env2条件与协议；与P13和旧矩阵分别计费。
+
+8192/memory32覆盖B0 generation及B3 evidence的原9动作/19记忆边界，B3原首失败项完整模板提示/token IDs同文成功返回；旧失败与未知usage不改写。4096/memory4 B0格式失败；8192 B3在9提交后预算停止，未完成20提交。SemIf output512没有固定探针优势，74-token语法错仍复现，正式解析器重复键缺口未修复。两组纠正env20的sim8/2均2提交，分别408/128请求，仅支持开发成本诊断，不证明算法效果。
+
+本轮已回传校验全部实验结果并完成自有资源清理/远端平台关机请求及SSH不可达复核。预试执行完成不表示全部条件验收通过；主对话可继续P15设计讨论，正式协议、benchmark及研究效果仍待后续工作，未自动启动。

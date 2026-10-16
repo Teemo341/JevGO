@@ -1,83 +1,137 @@
-# P14 阶段结果：工具已验收，真实 GPU 预试待资源
+# P14 正式实验前预试结果
 
-日期：2026-10-17（Asia/Shanghai）。**P14 尚未完成**；当前状态 `tools_accepted_gpu_resource_blocked`。P14a 的四次真实闭环、P14b 的八次真实探针、P14c 的两组真实成本预试均未执行，不能以离线检查替代。尚不具备依据 P14 冻结 P15 参数的条件；未启动 P15 或正式矩阵。
+2026-10-17（Asia/Shanghai）。定位 EVAL，关联 AR-2 候选、AR-5 记忆及 AR-7 预算。预试只诊断运行配置、失败和成本，不是正式效果评测。P15 和正式矩阵未启动。P14a/b/c 的有限实验、代码验收、独立审查与交接均已执行。实验失败和未完成的单项验收保留，不将预试完成写成所有条件通过。
 
-## 版本、范围与工作区
+## 版本与资源
 
-- 实际启动 HEAD：`523ea16da07b8b5fa67d286c15df2a26220979b0`；长期集成分支 `codex/autoresearch`。未回退到历史受测 `8921479`。后续确有 AutoDL 实现变更；独立比较确认正式 `jevgo/`、`configs/`、`scripts/`、`pyproject.toml`、`uv.lock` 相对历史受测版无变化。
-- 已审查、合入并为 AutoDL 同步的运行源码提交：`c9ed2eb389300cb227b8364bffc39361e8df6897`，GitHub 同名分支 SHA 已核对；正常 push，无强推。
-- P14a 实现提交 `4975e994edb78cb88646c0682fd7a51bf2b126b1`；P14b/c 实现提交 `742d59616bbfb3954c7e02418cd31cc651c66482`。各自独立分支/worktree 保留。
-- 启动时已有的 `.dev/tests/codex_notifications/`、`.dev/tools/codex_notifications/` 未跟踪目录保留，未纳入本任务提交。
-- 定位 EVAL，关联 AR-2 候选、AR-5 记忆、AR-7 预算。模型冻结，`learning_mode=none`，原 checkpoint/revision/精度；未使用其他任务训练权重。未改正式后端、ResearchPolicy、MCTS、CLI、成功标准或默认配置。
-- 两名实现和一名独立审查按四槽执行。P14a/审查为 gpt-6-astra / ultra，P14b/c 为 gpt-6.1-sol / ultra。
+- 启动 HEAD `523ea16da07b8b5fa67d286c15df2a26220979b0`，长期集成分支 `codex/autoresearch`；未回退到历史 `8921479`。两名实现和一名独立审查使用四槽：a/审查为 gpt-6-astra / ultra，b/c 为 gpt-6.1-sol / ultra。
+- 工具初次集成 `c9ed2eb389300cb227b8364bffc39361e8df6897`；所有本轮 GPU 实验实际源码均为 `955df143e7e2db059cb870e8d4fed9e9741621a2`，明确分支、完整 SHA、工具哈希和命令逐条件保存。后置开发配置修正及最终文档提交另记，不能冒充实际受测版本。
+- 本机四张 A40 被其他任务占用；沙箱 rc9 后主机 CUDA 复核通过，未终止他人进程。按技能审查/提交/正常 push 后，使用用户授权 AutoDL 单卡顺序运行。
+- 已核实实例 `autodl-container-9ffb428e3b-41b8a678`，GPU 为 RTX PRO 6000 Blackwell Server Edition，97887 MiB，UUID `GPU-94f15dea-8bf6-5f47-8b00-88514cde302c`。执行期间全局监控 PID2001 按45W/无GPU进程连续30分钟判闲；结束后主控停止自有监控并执行远端平台关机。
+- 环境245依赖全复用，零安装/下载。模型复用真实 NAS `/autodl-fs/data/JevGO/models`，98文件/138345325740字节通过已有可信全哈希记录、NAS身份及全部文件元数据复核；本轮不是重新读取138GB计算全哈希。原全哈希时间2026-10-15T18:08:51.903977Z。
+- 9B revision `7ac669b8fb476ba926491e3d1c39f9330d68dbed`；SemIf原4B revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`，SemIf实现 `23cf1f39fc9534fe81437200959b6dfc7106e45a`。保持原精度、冻结模型、`learning_mode=none`，未使用其他任务训练权重。
+- 正式后端、ResearchPolicy、MCTS、成功标准、CLI和项目默认配置未修改。开发工具在 `.dev/tools/`，分析在 `.dev/analysis/`，测试在 `.dev/tests/`。其他任务未跟踪的两个 `codex_notifications/` 目录保留，未纳入提交。
 
-## 已实现与通过的检查
+## 已实现能力与测试
 
-| 能力 | 验收证据与范围 |
-| --- | --- |
-| 完整请求 token 检查 | 使用正式 AutoTrust payload builder 与本地真实 tokenizer，涵盖 system/chat template、generation、repair 后缀、逐项 JEV bare-v1 提示和输出预留；不截断提示。 |
-| 运行期窗口与 usage 审计 | 要求服务/client max_model_len 明确一致；保存原 HTTP 请求/响应；配对预检/结束记录，独立核对真实请求数、raw usage、事件、ledger、result、预算状态。离线长度不能填补未知 usage。 |
-| 旧失败边界验收 | memory32 需要 B0 generation 或 B3 evidence 成功处理同一请求中至少9动作/19记忆，或更早客观成功；预算先停不算覆盖。 |
-| SemIf 可复用固定请求重放 | 四个原请求的 prompt、seed、n、temperature 和其余参数保留，256/512仅变上限；保存 raw text、响应、token IDs、有效 EOS 配置，finish_reason 没提供就留空。 |
-| 严格格式与动作校验 | 精确三字段 schema、Action 字段与公开 Action.key 合法性；只剥离完整外层 fence，不补残缺 JSON。原74-token语法错单列。 |
-| 搜索成本分析 | 初始化恢复验证、逐实际提交、未完成尾段分别核算；generation、candidate/evidence/stop、搜索环境操作、restore/replay 分开；按请求区间核对逻辑调用与内部请求，保留预算预拒绝的0实际请求。 |
+完整请求检查复用正式 payload builder 和实际 tokenizer/template，覆盖 generation、repair 后缀及逐项 JEV candidate/evidence/stop 请求与输出预留；不截断提示。运行时校验客户端/服务窗口一致，保存原HTTP请求/响应，配对预检与结束记录，独立重算实际usage、ledger、events、result和预算状态；离线长度不能填补未知usage。memory32验收使用原失败对应角色：B0 generation 或 B3 evidence 的同一成功请求达到至少9动作/19记忆，或更早客观成功。
 
-测试：原 AutoTrust/SemIf 后端 **116 passed，82.10 s，rc0**；集成提交上的新增工具 **33 passed，11.39 s，rc0**（P14a17、P14b/c16）。独立审查又分别复跑17/16项；这些复跑不与33项相加。工具测试包含真实 CPU MiniGrid + mock HTTP 的20步审计链，不属于真实模型成功证据。
+SemIf重放保留四请求的 prompt、seed、n、temperature和其余采样参数；只改变256/512上限。保存原始输出、token IDs、有效EOS依据，未知finish_reason明确留空。严格检查JSON、重复键、精确字段结构和公开动作，不人工补全残缺JSON。成本分析分别覆盖初始化、每次实际提交及未完成尾段，并按角色区分逻辑调用与底层模型请求。
 
-独立审查认可两个实现提交，无剩余执行前代码阻断；[审查报告](../../../.dev/artifacts/P14-20261017-pretrial/review/tool-review-final.md)。28个历史来源哈希全部吻合。
+CPU检查：原后端116项通过（82.10s）；最终集成 `af94d324dc822c0f6c6985c1ab0aa86694782cae` 的工具34项通过（a17、b/c17；pytest9.33s，外层11.31s，rc0），原合计150个不同检查；新增只读聚合commit `4169d872678871d43882ca8187a8ebea3fec111d` 独立审查后合入，主控6项定向CPU回归通过（0.78s），累计156个不同检查。独立审查复跑不重复加计。新增真实factory/runner回归验证env20与run2；后置修正 `a8edbff55674a02b33fa3a8ca848a754bf09e35e` 的fresh配置与实际env20条件除episode_id外语义相同，无需重跑GPU。28个历史来源哈希吻合。
 
-## P14a 离线发现
+## P14a：离线证据与真实上下文试验
 
-最终离线检查3598条长度记录；包含重复窗口、反事实记忆、修复探针及展开的 judge items，**不能按记录条数计真实模型请求或累计成本**。
+最终离线检查3598条长度记录，包含重复窗口、反事实记忆、合成repair及展开judge items，不能当作真实模型请求数。
 
-| 请求 | 输入 + 输出预留 | 4096余量 | 8192余量 | 证据性质 |
+| 请求 | 输入+输出预留 | 4096余量 | 8192余量 | 证据限制 |
 | --- | ---: | ---: | ---: | --- |
-| 原 B0 失败 generation | 4008 + 256 | -168 | 3928 | 当前固定 tokenizer/template 的完整离线重建；旧服务只给至少3841下界，原失败usage仍未知。 |
-| 原 B3 首个失败 evidence item | 4192 + 1 | -97 | 3999 | 与历史离线诊断一致；不改写成服务返回usage。 |
-| 历史 generation 加 repair 后缀峰值 | 4022 + 256 | -182 | 3914 | 合成格式修复长度探针，不是新增真实请求。 |
-| 展开全部历史 evidence items 峰值 | 4199 + 1 | -104 | 3992 | 包含旧失败后未发送items；4096下10条超限不等于10次HTTP400。 |
-| memory4 反事实样本最紧 evidence | 2120 + 1 | 1975 | 6071 | 按后缀保留记忆的长度探针，不是实际JEV筛选结果或新轨迹。 |
+| 原B0失败generation | 4008+256 | -168 | 3928 | 完整离线重建；旧服务仅给输入至少3841下界，失败usage仍未知。 |
+| 原B3首个失败evidence | 4192+1 | -97 | 3999 | 离线长度，不是服务usage。 |
+| 历史generation加repair后缀峰值 | 4022+256 | -182 | 3914 | 合成修复长度探针。 |
+| 展开全部历史evidence峰值 | 4199+1 | -104 | 3992 | 包含失败后未发送items；10条超限不等于10次HTTP失败。 |
+| memory4反事实最紧evidence | 2120+1 | 1975 | 6071 | 不是实际JEV记忆筛选或新轨迹。 |
 
-8192容纳这批历史完整请求与repair样本；4096容纳这批memory4反事实样本。两者都不保证新轨迹始终可容纳，不证明8192的显存容量、服务协议或闭环通过。新工具会在真实执行时逐请求检查。
+两组均使用MiniGrid-Empty-5x5-v0、seed0、gen256/judge1，B3候选4/sim8/树深4/rollout2，run20，预算3000请求/2000环境步；输入/输出token上限为null。两窗口按顺序运行，每个窗口先做实际服务窗口检查及四请求协议检查。协议沿用factory的gen128/judge1，与闭环gen256分开记录、分开计费。
 
-[最终离线摘要](../../../.dev/artifacts/P14-20261017-pretrial/a/offline-final/summary.json)、[配置与完整命令索引](../../../.dev/artifacts/P14-20261017-pretrial/a/handoff.json)。
+4096启动至ready为620.95s，8192为128.51s，包含NAS加载/初始化，不能视为API推理wall或直接比较窗口性能。服务实际BF16、TP1、无量化；gpu_memory_utilization沿用安装版本默认0.92。4096服务5秒采样峰94047MiB包含预分配KV/runtime池，不代表最低显存需求；8192采样峰89657MiB，同样包含预分配池。不同峰值不能证明扩大窗口降低显存需求。此容量证据仅适用于本轮96GiB卡，未验证本机A40。
 
-## P14b/P14c 状态与配置
+| 条件 | 提交/停止 | 请求 | 输入/输出tokens | 最紧输入+预留/余量 | 旧memory32边界 |
+| --- | --- | ---: | ---: | --- | --- |
+| 4096/m4 B0 | 0 / invalid_candidates | 2 | 2290/512 | 1152+256 / 2688 | 未覆盖 |
+| 4096/m4 B3 | 20 / environment_truncated | 2331 | 4388918/153420 | 2234+1 / 1861 | 改变了记忆条件，不支持原问题已解决 |
+| 8192/m32 B0 | 20 / environment_truncated | 21 | 82662/2545 | 6055+256 / 1881 | 已覆盖原generation角色9动作/19记忆 |
+| 8192/m32 B3 | 9 / budget_exhausted | 2996 | 11376314/73537 | 5471+1 / 2720 | 已覆盖原evidence角色9动作/19记忆 |
 
-| 项目 | 已准备条件 | 实际状态 |
-| --- | --- | --- |
-| P14a | 4096/memory4、8192/memory32，各B0/B3；seed0，gen256/judge1；旧smoke3000请求/2000环境步，无token硬上限 | 四个条件未运行，GPU资源阻塞；memory32原边界未验证。 |
-| P14b | 四坏请求 × 输出256/512；真实请求seed2/3/7/8，n1、temperature0.7 | 八探针未运行；512不能认定修复。 |
-| P14b可选短B0 | seeds0/1，max_steps6，memory4/window4096；100环境步/64请求/10万输入/1.6万输出；256/512同预算 | 配置已备，是否需要由八探针结论决定。 |
-| P14c | B3 seed0，max_steps2，sim8/2；候选4/树4/rollout2/memory4/window4096；500环境步/500请求/100万输入/10万输出 | 等待P14b确定同一生成条件；两组未运行。若统一512需先记录b证据和偏离原因。 |
+4096 B0原生成及唯一既有repair均输出256 tokens、finish_reason=length，JSON仍残缺；请求都成功进入服务且远低于窗口，不能误记为上下文拒绝。4096 B3完整闭环协议通过，但20次均提交forward，客观成功=false；1848环境步含1493重放，1336生成样本中1315严格合法，21语法错（1length、20stop），20提交来源均严格合法。配置memory4在临时证据阶段最多观察到6条公开记忆，不覆盖旧19条边界。单请求n=4在9B服务中仍为一次HTTP请求，prompt计一次、completion为合计；逐choice tokenusage未提供，保持未知。
 
-四个历史坏样本均严格重现JSON解析失败，原输出tokens为256/256/256/74。原EOS与finish_reason未知；74-token修复错误不能归因于上限。没有新增输出，所以本轮没有“512通过”或格式失败率改善的结论。
+8192 B0的第11个请求在9动作/19记忆时输入4003+预留256=4259（超过旧4096），HTTP200并输出116tokens/stop；后续第21个请求达19动作/32记忆，6055+256=6311。该候选窗口覆盖此次新轨迹的原角色边界，不能写成旧失败请求精确重放。21生成中20严格通过，另1个stop语法错经既有repair成功，20提交均有合法来源。两组同时改变窗口/记忆且独立重启服务，不把格式差异归因窗口本身。
 
-旧 full B3 seed0 的998个实际请求已由新成本工具重算；初始化、每次提交、尾段总数一致，两个请求事件因预算预检而0收费被单列。这是**旧日志审计**，不代替新sim8/2成本比较，也不支持算法效果判断。
+8192 B3第1079个evidence请求为9动作/19记忆、4192+1=4193，HTTP200；完整模板提示SHA `7f4562760bc72c39d3ba1d29a4de8e2ed2d41fac3b2ad20889e9ebade70e749c` 及token IDs SHA与旧首失败项一致，支持该窗口通过原上下文失败边界。此比对限于完整模板提示和token IDs，不宣称所有HTTP参数相同。原失败usage仍未知、原失败记录不改写。
 
-## 成本、失败、资源阻塞与未验证
+B3在第9次实际提交后，下一逻辑evidence评分需要19个请求，剩余额度只有4，因此在HTTP发送之前由原预算准入停止，实际2996请求；它不是上下文错误、JSON错误或未知服务usage。有限预算闭环通过，但20提交轨迹及任务成功均未完成；提交后的该次证据处理也未完成。154 generation/154 candidate/2528 evidence/160 stop实际请求分别消耗输入497980/500157/9819463/558714、输出70695/154/2528/160。540环境步含376重放。
 
-**本轮真实模型请求0、真实输入/输出tokens均0**；没有尝试GPU推理，因此也没有新增模型实验失败。CPU fixture的模拟账本和旧日志重算不计入新模型成本。
+9B四条件合计1975生成样本，1931严格合法、44语法错；49次实际提交均有严格合法来源。8192 B3为596/616严格合法，20错误中1length/19stop，无repair。所有原输出及实际结束原因保留，未人工补全。
 
-旧失败完整保留：9B B0尝试11请求、已知输入/输出22891/1408；B3尝试1079请求、已知3256590/33689。两次最终HTTP失败usage仍未知，数值仅为已知下界。旧SemIf四次格式失败及所有原输出保留。
+a最终[条件及角色汇总](../../../.dev/artifacts/P14-20261017-pretrial/a/results-summary.md)、[机器汇总](../../../.dev/artifacts/P14-20261017-pretrial/a/results-summary.json)、[原边界同文证据](../../../.dev/artifacts/P14-20261017-pretrial/a/original-boundary-evidence.json)和[独立格式审计](../../../.dev/artifacts/P14-20261017-pretrial/analysis-9b-format/index.json)给出完整行动与证据。
 
-本机沙箱 nvidia-smi rc9，必要主机侧复核rc0；现有PyTorch2.13.0+cu129、CUDA12.9可见4卡。两次主机准入检查均为4张A40全部被其他用户进程占用，最后每卡约6060MiB剩余，不满足本轮4B/9B至少一张空闲卡要求。未终止其他任务，未把沙箱隔离判为驱动故障。
+## P14b：输出长度没有解决全部格式失败
 
-按现行AutoDL技能，已完成可公开源码审查/提交/push并申请本轮免密SSH。当前没有本轮有效端点，未连接历史实例。建议复用已保存基础镜像与同一模型NAS、1张96GiB卡顺序运行9B/4B；8192仍须实测容量。预留约5GiB系统盘小日志、10GiB高速缓存；不训练、不输出新权重、不下载替代模型。23个输入文件约5.5MB已逐个生成SHA256清单。
+四个固定坏请求在两个上限下各严格通过3/4，同一请求的两组原文和token IDs完全相同。八个新输出均在上限之前以EOS token248044结束。Transformers没有提供finish_reason，保持未知；EOS结论来自实际token IDs，不能替旧输出补写结束原因。
 
-尚未验证：服务实际窗口/显存峰值、四次9B真实闭环和旧边界、八次SemIf格式探针、必要B0短闭环、P14c真实逐提交成本、真实usage完整性及远端清理。这些项目保持未完成。
+| 原请求（episode/attempt，request seed） | 原tokens | 本轮256/512实际tokens | 两组严格结果 |
+| --- | ---: | ---: | --- |
+| seed0/attempt0，2 | 256 | 139/139 | 均通过 |
+| seed0/attempt1，3 | 256 | 80/80 | 均通过 |
+| seed1/attempt0，7 | 256 | 115/115 | 均通过 |
+| seed1/attempt1，8 | 74 | 74/74 | 均JSON语法错，原文完全复现 |
 
-## 参数候选、续跑与交接
+八探针共8请求、12096输入/816输出tokens，插桩wall24.48s；含首次NAS加载的端到端297.71s。2秒GPU采样峰9165MiB，仅是采样峰。
 
-当前只保留**待GPU验证的候选**：9B8192/memory32与4096/memory4（gen256/judge1）。SemIf512仅为待比较输出上限，不能推荐为已验证修复；sim2/8尚无本轮成本依据。不得据此冻结正式协议。
+历史A40/driver575.64.03缺causal_conv1d/FLA，走reference PyTorch fallback；本轮Blackwell/driver580.95.05复用causal-conv1d1.7.0、FLA/fla-core0.5.2。torch2.13.0+cu129、Transformers5.17.0、SemIf代码、模型revision/bfloat16一致。硬件和可用kernel路径改变，未隔离单因素：不能把三条不同于历史的输出归因于提高长度或某一runtime变化。
 
-收到有效SSH后，先核实AutoDL身份、GPU、NAS、branch/commit与环境，按现行远端入口prepare/monitor；先容量/协议，再执行有限闭环。只有一张卡时顺序运行；每条件新目录，退出码与结果分别判定，预算停止不自动中断其他独立条件。取回小文件时按相对路径和哈希核对，再做独立结果审查与报告更新，按技能清理/关机。绝不在105运行生命周期脚本或关机。
+依据四组同文对照，保留256用于短B0与两组B3；未追加512短B0，没有测试简短prompt或新repair策略。256不是已验证的格式修复。
 
-- [P14任务状态](P14-pretrial.md)
-- [机器可读阶段报告](../../../.dev/artifacts/P14-20261017-pretrial/report.json)
-- [条件对比表](../../../.dev/artifacts/P14-20261017-pretrial/condition-comparison.csv)
-- [远端明确输入文件与哈希](../../../.dev/artifacts/P14-20261017-pretrial/remote-input-manifest.json)
-- [P14a复现说明](../../../.dev/tools/p14_context_README.md)
-- [P14b/c复现说明](../../../.dev/tools/p14_semif_pretrial.md)
+| 短B0（memory4/window4096/max6，环境期限6） | 提交 | 停止 | 请求 | 输入/输出tokens | 严格诊断 |
+| --- | ---: | --- | ---: | ---: | --- |
+| seed0 | 6 | environment_truncated，客观失败 | 8 | 11955/1273 | 5/8样本严格合法；两次既有repair成功；第3次提交来源有重复hypothesis/rationale键。 |
+| seed1 | 3 | invalid_candidates | 5 | 7259/741 | 3/5样本严格合法，3次提交来源均合法；新prompt生成256tokens后repair105tokens仍语法错。 |
 
-当前清理状态：本轮未启动任何GPU服务/模型进程，无自有GPU资源待清理；未连接AutoDL、未发关机命令；其他用户进程保留。此阶段报告不是P14完成交接；P15与正式benchmark继续留给主对话后续决定。
+seed0第三提交的重复字段被现有 `json.loads` 以last-wins接受，独立严格校验拒绝；不能把6次操作提交写成6次严格格式通过。该AR-2解析缺口完整保留，未在成本比较中途改变Policy。seed1的新repair105tokens与固定历史请求74tokens是不同请求，不混为一例。短闭环没有捕获token级EOS或finish_reason，保持未知；其长度与语法结论来自实际usage和原输出，不能套用八探针的EOS证据。
+
+## P14c：提交上限与环境期限分开后，成本差异才可解释
+
+初始 `run.max_steps=2` 经factory同时设置了MiniGrid环境期限2，树深4/rollout2的分支提前截断。原sim8/2均为28请求、41138输入/2506输出、2提交、environment_truncated；两组完整保留，不能由此认定模拟次数不影响成本。
+
+以现有 `episode.options.max_steps=20` 显式保留旧smoke环境期限，`run.max_steps=2` 仍限制实际提交。新增两组独立条件，统一seed0、候选4、树深4、rollout2、memory4、窗口4096、输出256及500环境步/500请求/100万输入/10万输出预算；仅simulations不同。CPU实际环境检查确认第三步不被截断，未修改正式代码或成功判据。
+
+| env20条件 | 实际提交/停止 | 模型请求 | 输入/输出tokens | env步（含replay） | 插桩wall |
+| --- | --- | ---: | ---: | ---: | ---: |
+| simulations=8 | 2 / max_steps，客观失败 | 408 | 734826/25344 | 96（53） | 625.07s |
+| simulations=2 | 2 / max_steps，客观失败 | 128 | 222793/7818 | 20（5） | 195.79s |
+
+| 条件/提交 | 生成请求 | candidate | evidence | stop | 总请求 | 输入/输出tokens |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| sim8 / 1 | 80 | 20 | 82 | 21 | 203 | 360944/12326 |
+| sim8 / 2 | 80 | 20 | 84 | 21 | 205 | 373882/13018 |
+| sim2 / 1 | 24 | 6 | 26 | 7 | 63 | 106105/3827 |
+| sim2 / 2 | 24 | 6 | 28 | 7 | 65 | 116688/3991 |
+
+初始化各自env2/replay1单列，不能分摊成模型请求；两组无预算停止或未提交尾段。replay已包含于env总量，不再次相加。完整逻辑调用、角色费用、搜索转移、恢复和提交动作见 `c/per-commit-costs.csv` 和 `c/cost-report.json`。
+
+sim8为40次逻辑生成→160实际生成请求、124逻辑评分→248实际评分请求。sim2为12次逻辑生成→48实际生成请求、40次逻辑评分→80实际评分请求。实际候选去重后常只有一个动作：sim8的40个候选事件中35次唯一1、5次唯一2；sim2的12个事件均唯一1。配置候选数4不等于4个不同动作。sim8生成样本132/160严格合法，sim2为42/48；四次实际提交均有严格合法来源，但不能称所有生成格式通过。
+
+在这一任务、seed和短提交限制下，sim2比sim8少280请求（68.6%），可作为后续开发成本配置候选。不能推广为效果提升、长期搜索效率或多任务统计结论。插桩wall不包含加载且不是端到端延迟；两次顺序运行不是硬件性能benchmark。
+
+## 成本、旧失败、未验证与交接
+
+全部18个实际实验条件，加2次9B四请求协议：5971实际模型请求、16922181输入/271050输出tokens、594逻辑生成、1660逻辑评分、2561环境步（含1937重放）、217rollouts。协议8请求另列；所有新usage完整。插桩wall合计2207.89s，排除服务/模型加载，不代表端到端时延、GPU计费时间或公平速度比较。
+
+| 子任务 | 执行状态 | 通过的检查 | 失败 / 未完成验收 |
+| --- | --- | --- | --- |
+| P14a | 四条件与两协议完成 | 实际窗口/容量、完整提示/预留、成本、原memory32两角色边界均复核 | 4096/m4 B0零提交格式失败；8192/m32 B3预算内9提交，完整20步未完成；四组客观成功均false。 |
+| P14b | 八固定探针及seed0/1短B0完成 | 同请求256/512配对、原文/token/EOS、严格字段/动作及费用审计 | 两上限各3/4；74-token错误复现；短B0仍有语法失败及正式解析器重复键缺口。 |
+| P14c | 原env2和纠正env20共四条件完成 | 统一配置/预算下每组2提交、角色/逻辑与实际请求/搜索/重放逐项对账 | 无任务成功或算法效果结论；原env2不足以解释模拟次数成本，结果仍保留。 |
+
+本机资源阻塞已通过授权AutoDL解决，无剩余实验资源阻塞。未验证本机A40上的8192容量、完整20步memory32 B3、改进格式策略、跨硬件/算子差异的因果来源、正式多任务多seed效果；未运行训练或扩展正式矩阵。
+
+b/c所有尝试合计613请求、1071205输入/41004输出、env149/replay66，包含原env2两组56请求及全部坏输出和repair；相同输出不去重计费。没有货币费率证据，未估算金额。
+
+旧9B失败保持原义：B0尝试11请求、已知22891输入/1408输出；B3尝试1079请求、已知3256590输入/33689输出，最终失败usage未知，token数仅为已知下界。历史与本轮费用分别保存，离线行数和测试mock计数不计入新推理成本。旧SemIf输出256/256/256/74及原EOS/finish_reason未知均保留。
+
+后续协议的参数候选及限制：
+
+- 保留memory32时，9B优先考虑window8192/gen256/judge1：本轮96GiB卡通过容量/协议与两种原失败角色边界；B3仍须按真实成本设计累计预算，不能承诺3000请求完成20提交。
+- 4096/memory4是较低上下文占用的开发候选：B3完成20提交，但B0格式失败；不作为所有方法已经通过的默认配置，也不替代memory32验收。
+- SemIf当前保留output256作后续诊断起点；四固定配对没有512收益证据，不能将512称为修复。正式协议前需决定严格重复键解析及格式失败/修复规则，所有尝试继续计费。
+- SemIf短B3的sim2可作为成本受限的开发候选，候选4/树深4/rollout2/memory4/window4096/output256，环境期限20与run提交2显式分开；这不是正式算法效果推荐。项目默认配置未被覆盖。
+
+**P15交接判断**：已具备回主对话讨论P15协议设计的实测依据；尚不能称正式协议已冻结或直接执行benchmark。主对话需处理上述格式规则、预算及未通过条件，再决定正式多任务/seed与公平比较方案。本轮没有启动P15。
+
+所有运行的配置、实际版本、命令、退出码、原事件、账本、提交动作、终止原因、设备及采样在新的独立目录中保留。[总机器报告](../../../.dev/artifacts/P14-20261017-pretrial/report.json)与[18条件对比CSV](../../../.dev/artifacts/P14-20261017-pretrial/condition-comparison.csv)逐条件链接原命令；协议费用单列。9B服务/协议/闭环命令亦见 `a/gpu-controller.py` 与各 `a/runtime-*/{protocol,B0,B3}-command/command.json`；SemIf见 `b/execution/*/command.txt`、`c/execution/*/command.txt`。复现须使用这些独立配置和显式资产根，不直接套项目默认配置。
+
+**资源清理**：a的9份阶段回传清单和b/c的7份作业回传均逐文件SHA核同；两个9B服务、全部SemIf进程和两处独占短TMPDIR均已清理。主控再次核实远端GPU计算进程为空、显存占用0MiB、共享NAS身份与98个原权重文件元数据匹配可信全哈希记录。自有monitor2001经cmdline核实后停止，5份最终monitor/关机预检小日志按相同相对路径取回并SHA核同。
+
+2026-10-16T17:59:19Z，主控仅通过SSH在已核实AutoDL执行平台shutdown，命令rc0并返回正确主机/平台脚本SHA的shutdown_requested标记；17:59:39Z复查SSH rc255/Connection refused。105及其他任务进程未动。没有查询平台控制台电源状态。实际shutdown服务器端最终report因实例已不可达未能再取回，明确保留此限制；本地已捕获实际关机命令/标记，预检计划及全部实验结果均已取回，不缺模型实验产物。详见[清理报告](../../../.dev/artifacts/P14-20261017-pretrial/cleanup.json)。
+
+独立审查记录在主产物 `review/`，包含工具、逐请求重分词、原边界双SHA、角色/总费用和清理复核。GPU受测commit始终是 `955df143e7e2db059cb870e8d4fed9e9741621a2`（完整SHA见版本节）；后置开发工具集成至 `acaf1d778468d16f0eb1f49401ed11acd5dd52e0`，最终文档交接commit由Git及总机器报告记录。本地后续提交不额外push。
