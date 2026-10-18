@@ -146,7 +146,8 @@ def test_known_reward_is_backed_up_when_postprocessing_exhausts_budget(tmp_path)
             return result.model_copy(update={"reward": 2.0})
     model = Fixture()
     result = run_episode(episode(), RunConfig(method="B3", simulations=1, rollout_depth=0,
-        judge_candidates=False, judge_stop=False, budget=BudgetLimits(judge_calls=0)),
+        judge_candidates=False, judge_stop=False, budget=BudgetLimits(judge_calls=0),
+        options={"memory_records": 1, "memory_pool_policy": "history_tail", "memory_pool_records": 4}),
         DenseMiniGrid(), model, model, output_dir=tmp_path / "dense")
     events = [json.loads(line) for line in (tmp_path / "dense/events.jsonl").read_text().splitlines()]
     search = next(e["payload"]["result"] for e in events if e["event_type"] == "search")
@@ -271,3 +272,52 @@ def test_runner_records_actual_proposal_scopes_and_root_visited_edges(tmp_path, 
         for search in (e["payload"] for e in events if e["event_type"] == "search"):
             assert search["root_candidate_edges"] == len(search["result"]["rootstats"])
             assert search["root_visited_edges"] == sum(edge["N"] > 0 for edge in search["result"]["rootstats"])
+
+
+@pytest.mark.parametrize("judge_stop", [False, True])
+def test_stop_off_advisory_metadata_and_high_scores_do_not_create_success(tmp_path, judge_stop):
+    model = Fixture()
+    result = run_episode(episode(), RunConfig(method="B1", max_steps=3, judge_candidates=False,
+        judge_evidence=False, judge_stop=judge_stop), MiniGridAdapter(), model, model,
+        output_dir=tmp_path / "stop")
+    assert result.termination_reason == TerminationReason.MAX_STEPS and not result.success
+    assert len(result.final_state.actions) == 3
+    semantics = result.metadata["policy_mechanisms"]["stop"]
+    assert semantics["mode"] == ("advisory" if judge_stop else "off")
+    assert semantics["calls_attempted"] == semantics["advice_records"] == (3 if judge_stop else 0)
+    assert not semantics["controls_success"] and not semantics["controls_action_or_search"]
+    assert result.usage.judge_calls == (3 if judge_stop else 0)
+    assert result.metadata["policy_mechanisms"]["memory"]["scored_selections"] == 0
+
+
+@pytest.mark.parametrize("judge_stop,steps,reason", [
+    (False, 3, TerminationReason.MAX_STEPS),
+    (True, 1, TerminationReason.BUDGET_EXHAUSTED),
+])
+def test_stop_budget_effect_is_indirect_and_keeps_already_committed_action(tmp_path, judge_stop, steps, reason):
+    model = Fixture()
+    result = run_episode(episode(), RunConfig(method="B1", max_steps=3, judge_candidates=False,
+        judge_evidence=False, judge_stop=judge_stop, budget=BudgetLimits(judge_calls=0)),
+        MiniGridAdapter(), model, model, output_dir=tmp_path / "stop-budget")
+    assert result.termination_reason == reason and not result.success
+    assert len(result.final_state.actions) == steps
+    assert result.final_state.evidence[-1].origin == "environment"
+    assert result.usage.judge_calls == 0  # Rejection before charge, not a free successful stop score.
+    semantics = result.metadata["policy_mechanisms"]["stop"]
+    assert semantics["cost_can_reduce_remaining_budget"] is judge_stop
+    assert semantics["calls_attempted"] == int(judge_stop) and semantics["advice_records"] == 0
+
+
+def test_stop_backend_failure_keeps_commit_observation_memory_and_charges(tmp_path):
+    model = Fixture(fail_after_action=True)
+    result = run_episode(episode(), RunConfig(method="B1", max_steps=3, judge_candidates=False,
+        judge_evidence=False, judge_stop=True), MiniGridAdapter(), model, model,
+        output_dir=tmp_path / "stop-error")
+    assert result.termination_reason == TerminationReason.MODEL_FAILURE
+    assert len(result.final_state.actions) == 1 and result.usage.judge_calls == 1
+    assert result.final_state.evidence[-1].origin == "environment"
+    assert result.final_state.evidence[-1].evidence_id in result.final_state.working_memory
+    semantics = result.metadata["policy_mechanisms"]["stop"]
+    assert semantics["backend_failure_can_terminate"]
+    assert semantics["calls_attempted"] == 1 and semantics["advice_records"] == 0
+    assert not result.success

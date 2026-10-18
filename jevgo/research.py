@@ -270,9 +270,6 @@ class ResearchPolicy:
         self.public_observation = config.options.get("public_observation", "legacy")
         if self.public_observation not in PUBLIC_OBSERVATION_MODES:
             raise ValueError("public_observation must be legacy, e1 or e1_e2")
-        if config.method in ("B1", "B3") and any((config.judge_candidates,
-                                                  config.judge_evidence, config.judge_stop)) and judge is None:
-            raise ValueError("Enabled JEV roles require a judge backend")
         # The policy's two-call proposal contract permits at most eight samples.
         # Keep the general RunConfig/backend API unchanged; reject, never clamp.
         if config.method != "B0" and config.candidate_count > 4:
@@ -289,6 +286,52 @@ class ResearchPolicy:
                             ("proposal_repair_error_chars", self.repair_error_chars)):
             if type(value) is not int or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
+
+        self.memory_records = config.options.get("memory_records", 32)
+        if type(self.memory_records) is not int or self.memory_records < 1:
+            raise ValueError("memory_records must be a positive integer")
+        self.memory_pool_policy = config.options.get("memory_pool_policy", "legacy")
+        if self.memory_pool_policy not in ("legacy", "history_tail"):
+            raise ValueError("memory_pool_policy must be legacy or history_tail")
+        if self.memory_pool_policy == "history_tail":
+            self.memory_pool_records = config.options.get("memory_pool_records")
+            if type(self.memory_pool_records) is not int or self.memory_pool_records < self.memory_records:
+                raise ValueError("history_tail requires explicit memory_pool_records >= memory_records")
+        else:
+            if "memory_pool_records" in config.options:
+                raise ValueError("memory_pool_records requires memory_pool_policy=history_tail")
+            self.memory_pool_records = max(self.memory_records, config.candidate_count)
+        self.memory_selection = config.options.get("memory_selection", "judge")
+        if self.memory_selection not in ("judge", "tail"):
+            raise ValueError("memory_selection must be judge or tail")
+        self.evidence_selection_enabled = (config.use_memory and self.memory_selection == "judge"
+                                           and self._enabled("evidence"))
+        if (self._enabled("candidates") or self.evidence_selection_enabled or self._enabled("stop")) and judge is None:
+            raise ValueError("Enabled JEV roles require a judge backend")
+        self.memory_counts = {"selections_completed": 0, "no_choice_skips": 0,
+                              "score_calls_attempted": 0, "score_calls_completed": 0,
+                              "scored_selections": 0, "different_from_same_pool_tail": 0}
+        self.stop_counts = {"calls_attempted": 0, "advice_records": 0}
+
+    def mechanism_metadata(self) -> dict:
+        """Configured semantics and observed operations, not effectiveness claims.
+
+        Counts span search and commit. Backend ledger entries remain the sole
+        authority for model requests/tokens, including partial and failed calls.
+        """
+        advisory = self._enabled("stop")
+        return {"scope": "all_search_and_commit_policy_calls",
+                "memory": {"enabled": self.config.use_memory, "pool_policy": self.memory_pool_policy,
+                           "pool_capacity": self.memory_pool_records, "retention_limit": self.memory_records,
+                           "selection": self.memory_selection, "evidence_judge_enabled": self.evidence_selection_enabled,
+                           "scoring_applied": self.memory_counts["scored_selections"] > 0,
+                           "retention_changed_vs_tail": self.memory_counts["different_from_same_pool_tail"] > 0,
+                           **self.memory_counts},
+                "stop": {"mode": "advisory" if advisory else "off", "controls_success": False,
+                         "controls_action_or_search": False, "cost_can_reduce_remaining_budget": advisory,
+                         "backend_failure_can_terminate": advisory,
+                         "advice_recorded": self.stop_counts["advice_records"] > 0,
+                         **self.stop_counts}}
 
     def _enabled(self, role: str) -> bool:
         return self.config.method in ("B1", "B3") and bool(getattr(self.config, "judge_" + role))
@@ -494,34 +537,69 @@ class ResearchPolicy:
 
     def select_memory(self, state: ResearchState, *, ledger: BudgetLedger,
                       phase: UsagePhase = UsagePhase.SEARCH) -> ResearchState:
-        # Selection operates on immutable, existing records; no model-written facts are accepted.
+        # The bounded pool is a suffix of this branch's immutable archive, not
+        # retained working memory plus new records. Opinion records never enter.
         records = tuple(e for e in state.evidence if e.kind != EvidenceKind.JUDGE_OPINION)
+        maximum = self.memory_records
+        pool = records[-self.memory_pool_records:] if self.config.use_memory else ()
+        tail = pool[-maximum:]
+        selected, scores, skip_reason = tail, None, None
+        details = {"state_id": state.state_id, "phase": UsagePhase(phase).value,
+                   "pool_policy": self.memory_pool_policy, "pool_capacity": self.memory_pool_records,
+                   "retention_limit": maximum, "pool_size": len(pool),
+                   "pool_rule": "eligible_branch_archive_tail_excluding_judge_opinion",
+                   "pool_ids": [e.evidence_id for e in pool],
+                   "pool_records": [{"id": e.evidence_id, "kind": e.kind.value, "origin": e.origin,
+                                     "source": e.source, "branch_id": e.branch_id} for e in pool],
+                   "selection": self.memory_selection,
+                   "tail_ids": [e.evidence_id for e in tail],
+                   "prior_working_memory_ids": list(state.working_memory),
+                   "raw_evidence_count": len(state.evidence), "eligible_evidence_count": len(records)}
         if not self.config.use_memory:
-            return state.evolve(working_memory=())
-        maximum = self.config.options.get("memory_records", 32)
-        if type(maximum) is not int or maximum < 1:
-            raise ValueError("memory_records must be a positive integer")
-        selected = records[-maximum:]
-        if records and self._enabled("evidence"):
-            # Bound individual scoring calls; older raw observations remain in the event/evidence archive.
-            pool = records[-max(maximum, self.config.candidate_count):]
-            scores = self._scores(
-                state, JudgeRole.EVIDENCE,
-                "Rate evidence relevance to the task. Failed experiments and counterevidence can be useful. "
-                "Do not rate agreement with a preferred hypothesis.",
-                tuple(e.content for e in pool), ledger, phase,
-            )
+            skip_reason = "memory_disabled"
+        elif len(pool) <= maximum:
+            skip_reason = "pool_fits_retention"
+            self.memory_counts["no_choice_skips"] += 1
+        elif self.memory_selection == "tail":
+            skip_reason = "same_pool_tail_comparator"
+        elif not self.evidence_selection_enabled:
+            skip_reason = "evidence_role_disabled"
+        else:
+            self.memory_counts["score_calls_attempted"] += 1
+            try:
+                scores = self._scores(
+                    state, JudgeRole.EVIDENCE,
+                    "Rate evidence relevance to the task. Failed experiments and counterevidence can be useful. "
+                    "Do not rate agreement with a preferred hypothesis.",
+                    tuple(e.content for e in pool), ledger, phase,
+                )
+            except Exception as exc:
+                # The transition/working memory already exists; a failed judge
+                # must not fabricate a completed selection or delete evidence.
+                self._event("memory_selection", state, **details, status="failed",
+                            selection_applied=False, evidence_ids=list(state.working_memory),
+                            selected_ids=None, scores=None, skip_reason=None,
+                            error={"type": type(exc).__name__, "message": str(exc)})
+                raise
+            self.memory_counts["score_calls_completed"] += 1
             indices = sorted(range(len(pool)), key=lambda i: (-scores[i], i))[:maximum]
             selected = tuple(pool[i] for i in sorted(indices))
+            self.memory_counts["scored_selections"] += 1
+            self.memory_counts["different_from_same_pool_tail"] += int(selected != tail)
         successor = state.evolve(working_memory=tuple(e.evidence_id for e in selected))
-        self._event("memory_selection", successor, evidence_ids=list(successor.working_memory),
-                    raw_evidence_count=len(successor.evidence))
+        self.memory_counts["selections_completed"] += 1
+        self._event("memory_selection", successor, **details, status="completed",
+                    selection_applied=True, selected_ids=list(successor.working_memory),
+                    evidence_ids=list(successor.working_memory),
+                    scores=list(scores) if scores is not None else None,
+                    skip_reason=skip_reason, differs_from_same_pool_tail=selected != tail)
         return successor
 
     def assess_completion(self, state: ResearchState, *, ledger: BudgetLedger,
                           phase: UsagePhase = UsagePhase.SEARCH) -> ResearchState:
         if state.done or not self._enabled("stop"):
             return state
+        self.stop_counts["calls_attempted"] += 1
         scores = self._scores(
             state, JudgeRole.STOP,
             "Assess whether the public evidence is sufficient to answer the task. This advice cannot "
@@ -532,9 +610,14 @@ class ResearchPolicy:
             episode_id=state.episode.episode_id, branch_id=state.branch_id,
             kind=EvidenceKind.JUDGE_OPINION, origin="model", source="jev_stop",
             content="Completion advice (uncalibrated): " + str(scores[0]),
-            raw={"score": scores[0], "objective_success": state.success},
+            raw={"score": scores[0], "objective_success": state.success, "mode": "advisory",
+                 "controls_success": False, "controls_action_or_search": False},
             references=state.fact_ids, state_id=state.state_id,
         )
         successor = state.evolve(evidence=state.evidence + (opinion,))
-        self._event("completion_advice", successor, score=scores[0], objective_success=state.success)
+        self.stop_counts["advice_records"] += 1
+        self._event("completion_advice", successor, score=scores[0], objective_success=state.success,
+                    mode="advisory", controls_success=False, controls_action_or_search=False,
+                    phase=UsagePhase(phase).value,
+                    cost_can_reduce_remaining_budget=True, backend_failure_can_terminate=True)
         return successor

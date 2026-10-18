@@ -680,3 +680,166 @@ def test_invalid_coverage_option_rejected_before_generation():
     with pytest.raises(ValueError, match="candidate_coverage"):
         ResearchPolicy(model, None, RunConfig(method="B2", options={"candidate_coverage": "unbounded"}))
     assert not model.requests
+
+
+def archived_state(count):
+    initial = initialize_state(EpisodeSpec(environment="test", task="test evidence"), StepResult(
+        observation=Observation(text="Old counterevidence: the door stayed closed",
+            admissible_actions=(Action(name="a"), Action(name="b")))))
+    for i in range(count - 1):
+        initial = record_transition(initial, Candidate(action=Action(name="a")), StepResult(
+            observation=Observation(text=f"Observation {i}",
+                admissible_actions=(Action(name="a"), Action(name="b")))))
+    return initial
+
+
+@pytest.mark.parametrize("maximum", [4, 32])
+@pytest.mark.parametrize("excess", [-2, 0, 5])
+def test_g0_no_choice_skips_all_scoring_and_preserves_legacy_ids_order(tmp_path, maximum, excess):
+    initial = archived_state(maximum + excess)
+    judge = Model(scores=(0,))  # Would be invalid if called on a multi-item pool.
+    ledger = BudgetLedger(BudgetLimits(judge_calls=0, model_requests=0, input_tokens=0, output_tokens=0))
+    policy = ResearchPolicy(Model(), judge, RunConfig(method="B3", candidate_count=4,
+        options={"memory_records": maximum}), events=JSONLEventStore(tmp_path / "events.jsonl"))
+    selected = policy.select_memory(initial, ledger=ledger)
+    assert selected.working_memory == tuple(e.evidence_id for e in initial.evidence[-maximum:])
+    assert selected.evidence == initial.evidence
+    assert ledger.used == Usage() and ledger.entries == () and not judge.requests
+    event = policy.events.read()[-1].payload
+    assert event["pool_capacity"] == maximum and event["retention_limit"] == maximum
+    assert event["pool_ids"] == selected.working_memory == event["selected_ids"]
+    assert event["scores"] is None and event["skip_reason"] == "pool_fits_retention"
+    assert policy.mechanism_metadata()["memory"]["no_choice_skips"] == 1
+    assert not policy.mechanism_metadata()["memory"]["scoring_applied"]
+
+
+class ItemCostJudge(Model):
+    def score(self, request, *, ledger, phase):
+        self.requests.append(request)
+        usage = Usage(judge_calls=1, model_requests=len(request.items),
+                      input_tokens=7 * len(request.items), output_tokens=len(request.items))
+        ledger.charge(usage, source="fixture.item-scoring", phase=phase)
+        return JudgeResponse(scores=self.scores, identity=self.identity, usage=usage)
+
+
+def test_g1_score_counterfactual_changes_actual_next_generation_prompt(tmp_path):
+    initial = archived_state(4)
+    # Simulate earlier compression: the history pool must still recall old evidence.
+    initial = initial.evolve(working_memory=(initial.evidence[-1].evidence_id,))
+    original = initial.model_dump(mode="json")
+    results, prompts, events = [], [], []
+    for index, scores in enumerate(((1, .2, .1, 0), (0, .2, .1, 1))):
+        generator, judge = Model((proposal("a"),) * 4), ItemCostJudge(scores=scores)
+        policy = ResearchPolicy(generator, judge, RunConfig(method="B3", judge_candidates=False,
+            judge_stop=False, options={"memory_records": 2, "memory_pool_policy": "history_tail",
+                                      "memory_pool_records": 4}),
+            events=JSONLEventStore(tmp_path / str(index) / "events.jsonl"))
+        ledger = BudgetLedger(BudgetLimits(model_requests=5, input_tokens=28, output_tokens=4))
+        selected = policy.select_memory(initial, ledger=ledger)
+        policy.candidates(selected, ledger=ledger)
+        results.append(selected)
+        prompts.append(json.loads(generator.requests[0].prompt.split("Public state:\n", 1)[1]))
+        events.append(next(e.payload for e in policy.events.read() if e.event_type == "memory_selection"))
+        assert ledger.used.model_requests == 5 and ledger.used.input_tokens == 28 and ledger.used.output_tokens == 4
+        assert tuple(judge.requests[0].items) == tuple(e.content for e in initial.evidence)
+        assert selected.evidence == initial.evidence
+        assert policy.mechanism_metadata()["memory"]["scoring_applied"]
+    assert initial.model_dump(mode="json") == original
+    assert results[0].working_memory == tuple(initial.evidence[i].evidence_id for i in (0, 1))
+    assert results[1].working_memory == tuple(initial.evidence[i].evidence_id for i in (1, 3))
+    assert [item["content"] for item in prompts[0]["memory"]] == [initial.evidence[i].content for i in (0, 1)]
+    assert [item["content"] for item in prompts[1]["memory"]] == [initial.evidence[i].content for i in (1, 3)]
+    assert events[0]["pool_ids"] == events[1]["pool_ids"]
+    assert events[0]["scores"] != events[1]["scores"]
+    assert events[0]["pool_records"][0]["kind"] == "observation"
+    assert events[0]["pool_records"][0]["source"] == "test"
+
+
+@pytest.mark.parametrize("candidate_count", [1, 4])
+def test_history_pool_is_independent_of_candidate_count_and_tail_uses_same_pool(tmp_path, candidate_count):
+    initial = archived_state(8)
+    selections, pools = [], []
+    for selection in ("judge", "tail"):
+        judge = ItemCostJudge(scores=(1,) * 6) if selection == "judge" else None
+        policy = ResearchPolicy(Model(), judge, RunConfig(method="B3", candidate_count=candidate_count,
+            judge_candidates=False, judge_stop=False, options={"memory_records": 4,
+                "memory_pool_policy": "history_tail", "memory_pool_records": 6,
+                "memory_selection": selection}), events=JSONLEventStore(tmp_path / selection / "events.jsonl"))
+        ledger = BudgetLedger()
+        selected = policy.select_memory(initial, ledger=ledger)
+        selections.append(selected.working_memory)
+        pools.append(policy.events.read()[-1].payload["pool_ids"])
+        assert selected.evidence == initial.evidence
+        assert ledger.used.model_requests == (6 if selection == "judge" else 0)
+        if selection == "tail":
+            assert policy.events.read()[-1].payload["skip_reason"] == "same_pool_tail_comparator"
+    assert pools[0] == pools[1] == tuple(e.evidence_id for e in initial.evidence[-6:])
+    assert selections[0] == tuple(e.evidence_id for e in initial.evidence[-6:-2])  # stable old-first ties
+    assert selections[1] == tuple(e.evidence_id for e in initial.evidence[-4:])
+
+
+def test_memory_pool_never_mutates_or_imports_sibling_evidence(tmp_path):
+    parent = archived_state(3)
+    branches = [record_transition(parent, Candidate(action=Action(name="a")),
+        StepResult(observation=Observation(text=name)), branch_id=name) for name in ("left", "right")]
+    for index, branch in enumerate(branches):
+        policy = ResearchPolicy(Model(), ItemCostJudge(scores=(0, 0, 0, 1)), RunConfig(method="B3",
+            options={"memory_records": 1, "memory_pool_policy": "history_tail", "memory_pool_records": 4}),
+            events=JSONLEventStore(tmp_path / str(index) / "events.jsonl"))
+        selected = policy.select_memory(branch, ledger=BudgetLedger())
+        assert selected.working_memory == (branch.evidence[-1].evidence_id,)
+        assert branches[1 - index].evidence[-1].evidence_id not in policy.events.read()[-1].payload["pool_ids"]
+        assert selected.evidence == branch.evidence
+    assert len(parent.evidence) == 3
+
+
+@pytest.mark.parametrize("options", [
+    {"memory_pool_policy": "history_tail"},
+    {"memory_pool_policy": "history_tail", "memory_records": 4, "memory_pool_records": 3},
+    {"memory_pool_policy": "history_tail", "memory_pool_records": True},
+    {"memory_pool_policy": "history_tail", "memory_pool_records": 4.0},
+    {"memory_pool_records": 64}, {"memory_selection": "unknown"},
+    {"memory_pool_policy": "retained_plus_new"}, {"memory_records": 0},
+])
+def test_invalid_memory_policies_reject_before_model_calls(options):
+    model = Model()
+    with pytest.raises(ValueError):
+        ResearchPolicy(model, model, RunConfig(options=options))
+    assert not model.requests
+
+
+def test_failed_memory_judge_keeps_archive_and_logs_incomplete_selection(tmp_path):
+    class Fails(Model):
+        def score(self, request, *, ledger, phase):
+            ledger.record(Usage(model_requests=1, input_tokens=7), source="partial-failure", phase=phase, failed=True)
+            raise ModelFailure("failed after first item")
+    initial = archived_state(5)
+    policy = ResearchPolicy(Model(), Fails(), RunConfig(options={"memory_records": 2,
+        "memory_pool_policy": "history_tail", "memory_pool_records": 4}),
+        events=JSONLEventStore(tmp_path / "events.jsonl"))
+    ledger = BudgetLedger()
+    with pytest.raises(ModelFailure):
+        policy.select_memory(initial, ledger=ledger)
+    event = policy.events.read()[-1].payload
+    assert event["status"] == "failed" and not event["selection_applied"]
+    assert event["selected_ids"] is None and event["evidence_ids"] == initial.working_memory
+    assert ledger.used.model_requests == 1 and ledger.used.input_tokens == 7
+    assert policy.mechanism_metadata()["memory"]["score_calls_attempted"] == 1
+    assert policy.mechanism_metadata()["memory"]["score_calls_completed"] == 0
+
+
+def test_stop_opinions_never_enter_memory_pool_or_gain_control(tmp_path):
+    initial = archived_state(2)
+    judge = Model(scores=(1,))
+    policy = ResearchPolicy(Model(), judge, RunConfig(options={"memory_records": 4}),
+                            events=JSONLEventStore(tmp_path / "events.jsonl"))
+    ledger = BudgetLedger()
+    advised = policy.assess_completion(initial, ledger=ledger)
+    retained = policy.select_memory(advised, ledger=ledger)
+    assert len(judge.requests) == 1 and ledger.used.judge_calls == 1
+    assert retained.working_memory == initial.working_memory
+    assert retained.evidence == advised.evidence and not retained.done and not retained.success
+    assert advised.evidence[-1].evidence_id not in policy.events.read()[-1].payload["pool_ids"]
+    metadata = policy.mechanism_metadata()["stop"]
+    assert metadata["mode"] == "advisory" and metadata["advice_records"] == 1
+    assert not metadata["controls_success"] and not metadata["controls_action_or_search"]

@@ -172,6 +172,7 @@ def run_episode(episode: EpisodeSpec, config: RunConfig, environment: Environmen
     state = ResearchState(episode=episode, observation=Observation(text="Environment has not reset"))
     ledger = BudgetLedger(config.budget)
     reason, error, domain = TerminationReason.MAX_STEPS, None, None
+    policy = None
     cleanup_errors: list[str] = []
     search_decisions = 0
     initialized = False
@@ -268,6 +269,7 @@ def run_episode(episode: EpisodeSpec, config: RunConfig, environment: Environmen
             "judge": judge.identity.model_dump(mode="json") if judge else None,
             "committed_steps": len(state.actions), "search_decisions": search_decisions,
             "over_budget": list(ledger.over_budget), "cleanup_errors": cleanup_errors,
+            "policy_mechanisms": policy.mechanism_metadata() if policy is not None else None,
             "wall_seconds_scope": "instrumented_operations_plus_search_overhead",
             "validation_level": (metadata or {}).get("validation_level", "unclassified")})
     _write_json(output / "ledger.json", ledger.summary())
