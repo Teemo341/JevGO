@@ -57,3 +57,26 @@ def test_manifest_rejects_unbounded_or_training_conditions():
     manifest["conditions"][0]["run"] = {"budget": {}}
     with pytest.raises(ValueError, match="run.budget"):
         tool.validate_manifest(manifest)
+
+
+def test_scoring_capture_preserves_encoder_return_and_failure(monkeypatch):
+    from semif_phase1 import direct
+    expected = ([1, 2], [3, 4], "digest")
+    def encode(tokenizer, row, maximum):
+        if maximum < 2:
+            raise ValueError("context limit")
+        return expected
+    monkeypatch.setattr(direct, "encode_prompt", encode)
+    class Tokenizer:
+        def apply_chat_template(self, *args, **kwargs):
+            return "exact full prompt"
+    row = {"id": "evidence:0", "state": {"context": "public only"}, "question": "Useful?",
+           "options": [{"id": "no", "description": "No"}, {"id": "yes", "description": "Yes"}]}
+    with tool.capture_semif_scoring() as captured:
+        assert direct.encode_prompt(Tokenizer(), row, 10) == expected
+        with pytest.raises(ValueError, match="context limit"):
+            direct.encode_prompt(Tokenizer(), row, 1)
+    assert direct.encode_prompt is encode
+    assert captured[0]["rendered_prompt"] == "exact full prompt"
+    assert captured[0]["prompt_token_ids"] == [1, 2]
+    assert captured[1]["error"]["type"] == "ValueError"

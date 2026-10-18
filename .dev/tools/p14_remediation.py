@@ -6,7 +6,7 @@ shared local assets, original frozen models, and explicitly assigned GPUs.
 from __future__ import annotations
 
 import argparse
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import os
@@ -15,6 +15,7 @@ import platform
 import subprocess
 import sys
 import time
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -48,6 +49,28 @@ def provenance():
             "argv": sys.argv, "hostname": platform.node(),
             "device_environment": {k: os.environ.get(k) for k in ("CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES")},
             "source_sha256": {str(p.relative_to(ROOT)): sha(p) for p in [Path(__file__), ROOT / "jevgo/research.py", ROOT / "jevgo/runner.py"]}}
+
+
+@contextmanager
+def capture_semif_scoring():
+    """Observe the exact production encoder; preserve preflight and execution."""
+    from semif_phase1 import direct
+    from semif_phase1.core import direct_messages
+    original, rows = direct.encode_prompt, []
+    def observed(tokenizer, row, max_tokens):
+        item = {"row": row, "max_tokens": max_tokens, "encode_call": len(rows) + 1}
+        rows.append(item)
+        try:
+            ids, slots, prompt_hash = original(tokenizer, row, max_tokens)
+            item.update(prompt_token_ids=ids, slot_ids=slots, prompt_sha256=prompt_hash,
+                        rendered_prompt=tokenizer.apply_chat_template(direct_messages(row), tokenize=False,
+                            add_generation_prompt=True, enable_thinking=False))
+            return ids, slots, prompt_hash
+        except Exception as exc:
+            item["error"] = {"type": type(exc).__name__, "message": str(exc)}
+            raise
+    with patch.object(direct, "encode_prompt", observed):
+        yield rows
 
 
 class TraceBackend:
@@ -89,6 +112,8 @@ class TraceBackend:
         if self.semif and method == "generate":
             from p14_semif_pretrial import capture_generation
             context = capture_generation(self.backend)
+        elif self.semif and method == "score":
+            context = capture_semif_scoring()
         else:
             context = nullcontext(captured)
         try:
@@ -102,7 +127,8 @@ class TraceBackend:
         finally:
             row.update(elapsed_seconds=time.monotonic() - started,
                        ledger_entries=[e.model_dump(mode="json") for e in ledger.entries[before:]],
-                       generation_token_evidence=captured)
+                       generation_token_evidence=captured if method == "generate" else [],
+                       scoring_token_evidence=captured if method == "score" else [])
             append(self.output / "logical.jsonl", {"event": "finished", **row})
 
     def generate(self, request, **kwargs):
@@ -164,18 +190,26 @@ def execute_condition(condition, backend, output):
                           actions=[a.name for a in run.final_state.actions], error=run.error,
                           usage=run.usage.model_dump(mode="json"), result_path=str(output / "episode/result.json"))
             ledger_data = json.loads((output / "episode/ledger.json").read_text())
-        elif kind == "request":
+        elif kind in ("request", "capacity_request"):
             trace.request_origin = condition.get("generation_origin")
             response = trace.generate(GenerationRequest.model_validate(condition["request"]), ledger=ledger, phase=UsagePhase.COMMIT)
-            from jevgo.research import parse_generated_proposal
-            validations = []
-            for text in response.texts:
-                try:
-                    candidate = parse_generated_proposal(text, admissible_actions=tuple(Action.model_validate(a) for a in condition["allowed_actions"]))
-                    validations.append({"valid": True, "action": candidate.action.model_dump(mode="json")})
-                except (ValueError, InvalidCandidate) as exc:
-                    validations.append({"valid": False, "error": str(exc)})
-            result.update(validations=validations, source=condition.get("source"))
+            if kind == "request":
+                from jevgo.research import parse_generated_proposal
+                validations = []
+                for text in response.texts:
+                    try:
+                        candidate = parse_generated_proposal(text, admissible_actions=tuple(Action.model_validate(a) for a in condition["allowed_actions"]))
+                        validations.append({"valid": True, "action": candidate.action.model_dump(mode="json")})
+                    except (ValueError, InvalidCandidate) as exc:
+                        validations.append({"valid": False, "error": str(exc)})
+                result.update(validations=validations, source=condition.get("source"))
+            else:
+                result.update(actual_input_tokens=response.usage.input_tokens,
+                              actual_output_tokens=response.usage.output_tokens,
+                              declared_input_tokens=condition["input_tokens"],
+                              actual_decode_target=condition["decode_target"],
+                              capacity_pass=response.usage.input_tokens == condition["input_tokens"] and response.usage.output_tokens == condition["decode_target"],
+                              target_concurrency=1, reasoning_quality_verified=False)
             ledger_data = ledger.summary()
         else:
             state = fixed_state(condition, ledger)
@@ -229,6 +263,8 @@ def validate_manifest(manifest):
             raise ValueError("P14 only supports frozen inference")
         if "budget" in c.get("run", {}):
             raise ValueError("Declare budget once at condition level; run.budget is forbidden")
+        if c["kind"] == "capacity_request" and (c["request"]["n"] != 1 or c["request"]["max_new_tokens"] != c["decode_target"]):
+            raise ValueError("Direct capacity probe needs n=1 and exact declared decode bound")
     return manifest
 
 
