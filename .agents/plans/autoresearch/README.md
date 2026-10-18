@@ -3,7 +3,7 @@
 ## 目标与范围
 冻结参数，贯通显式状态、LLM候选、JEV评估、真实执行、MCTS和终止。先MiniGrid，再ALFWorld、ScienceWorld、DiscoveryWorld；沿用当前三个AutoTrust checkpoint和SemIf。
 默认 learning_mode=none；其他模式显式报未实现。首轮交付CPU算法/真实环境验收及GPU交接，不将mock、下载成功或小fixture当作模型效果。
-用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。截至2026-10-19，首版、P13统一GPU复核、P14有限预试及CPU行为追查已完成各自所述范围；P14保留executed_with_failures。下一轮[P14d–i修正与最小验证](P14-REMEDIATION.md)已规划，尚未实施。正式benchmark与算法效果仍待验证。
+用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。截至2026-10-19，首版、P13统一GPU复核、P14有限预试及CPU行为追查已完成各自所述范围；P14保留executed_with_failures。[P14d–i修正与最小验证](P14-REMEDIATION.md)已完成实现与有限验证，负结果保留，见[综合交接](P14-REMEDIATION-RESULTS.md)。正式benchmark与算法效果仍待验证。
 
 ## 任务表
 | 任务 | 环节 | 依赖 | 状态 |
@@ -23,7 +23,7 @@
 | [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | development_gpu_round_complete |
 | [P13 GPU修复统一集成](P13-gpu-integration.md) | EVAL、AR-2/5/7 | P03,P04,P11,P12 | complete |
 | [P14 正式实验前预试](P14-pretrial.md) | EVAL、AR-2/5/7 | P13 | executed_with_failures |
-| [P14d–i 后续修正与最小验证](P14-REMEDIATION.md)（P14子任务） | EVAL、AR-2至7 | P14结果/行为诊断 | planned_not_started |
+| [P14d–i 后续修正与最小验证](P14-REMEDIATION.md)（P14子任务） | EVAL、AR-2至7 | P14结果/行为诊断 | complete_with_negative_results |
 
 ## 依赖与调度
 P00 → P01；P02/P03/P04/P05/P06/P08/P09/P10随后可独立开发。P07等待P02至P06；P11等待P07；P12等待P08至P11及传递依赖。
@@ -46,10 +46,14 @@ B0顺序LLM；B1 JEV重排贪心；B2无JEV MCTS；B3完整方法。候选/工�
 2. 环境：真实reset/step、成功语义、恢复能力实测。
 3. 模型：指定checkpoint真实生成评分；硬件、配置、token及内部请求。
 4. 研究：固定任务seed/权限/预算的对比与消融，报告成功率/成本，不预设增益。
-前三层的已述范围及开发矩阵已完成；统一修复版组合CPU/GPU验收已通过；P14有限GPU预试、工具及成本审查已执行，格式失败和未完成单项验收保留，见[P14结果](P14-RESULTS.md)；已具备P15设计讨论依据，先按P14d–i处理确定缺陷和方法语义；正式协议尚未冻结、P15未启动；第四层正式研究效果未完成。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
+前三层的已述范围及开发矩阵已完成；统一修复版组合CPU/GPU验收已通过；P14有限GPU预试、工具及成本审查已执行，格式失败和未完成单项验收保留，见[P14结果](P14-RESULTS.md)；可开始 P15 协议冻结，范围限本轮已测 9B/SemIf 条件，保留负结果与容量限制，本轮确定缺陷和方法语义修正已有独立证据；正式协议尚未冻结、P15未启动；第四层正式研究效果未完成。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
 
 ## 外部交接
 任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档已用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
 训练、SemIf缓存优化、通用命令行实验环境进入后续任务池。
 
 具体交付记录：[集成验收](ACCEPTANCE.md)、[GPU独立交接](GPU-HANDOFF.md)、[P07a并行子任务](P07a-cli.md)。
+
+## P14d–i 最新交接
+
+最终实现 `9c88efce2a37a47571d30720e7d61dbabdc9582d`，完整 HOST CPU 527 passed；9B 与 SemIf 各 B0–B3 一次，八个组合条件均完成且无客观成功；SemIf B0 格式失败、两个 B3 预算耗尽均保留。9B 原生窗口单请求与较短输入四序列、SemIf 8192 单请求容量已验证。单候选搜索、未选择记忆和 advisory stop 均按真实作用解释；不声称研究效果。原 P14 保持 executed_with_failures；P15/正式 benchmark 未启动。报告与资源清理：[P14-REMEDIATION-RESULTS.md](P14-REMEDIATION-RESULTS.md)。

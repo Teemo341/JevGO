@@ -122,3 +122,28 @@ MCTS 通过连续调用 `transition` 执行真实 rollout，按每条边即时�
 错误类型：`JevGOError`；`BudgetExceeded(resources, phase)`、`EnvironmentFailure`、`ModelFailure`、`InvalidCandidate`、`UnsupportedCapability`，均有 `category: ErrorCategory`。
 
 `RunResult(episode, config, final_state, termination_reason, usage, answer="", error=None, events_path=None, metadata={})` 可序列化。结束原因：`success/budget_exhausted/environment_terminated/environment_truncated/environment_failure/model_failure/invalid_candidates/no_candidates/max_steps/cancelled`。`success` 必须与 final_state 的客观 success 一致；预算耗尽与 JEV 停止意见不构成成功。预算耗尽允许保留部分答案、证据和未决问题。
+
+## P14 研究策略补充（2026-10-19）
+
+
+以下配置位于 `run.options`，所有方法使用相同的生成文本解析契约：模型必须返回包含 `action`、`hypothesis`、`rationale` 的单个 JSON 对象；`action` 必须包含非空字符串 `name` 和对象 `arguments`。递归重复键、非有限数、缺失或额外字段、错误类型及公开合法动作集之外的动作均拒绝。支持完整的外层 JSON fence：忽略首尾空白后，开头必须为三个反引号、小写 `json` 紧接 LF 换行，结尾为三个反引号；不从坏输出补全或提取动作。未提供公开合法动作集时保持合法性未知，不推测环境动作。内部 `Candidate`/`Action` 构造默认值保持原有接口。
+
+| 配置 | 默认值与含义 |
+| --- | --- |
+| `proposal_repair` | `generic`；可选 `bounded`，附有界坏样本和解析错误。仅零合法候选时修复一次，部分合法候选保留。 |
+| `proposal_repair_text_chars` / `proposal_repair_error_chars` | `1024` / `256`；正整数，分别限制 bounded repair 引用的坏样本文本和解析原因字符数。 |
+| `candidate_coverage` | `off`；可选 `bounded`。非 B0 初始有合法候选但动作种类不足时补采一次；初始全坏仅修复一次。补采后不再修复，最多两次生成调用、八个样本。B0 保持单样本加一次修复。 |
+| `public_observation` | `legacy`；`e1` 添加 MiniGrid 局部数组轴和编码说明；`e1_e2` 另加相邻公开观测差分。未变化仅指公开观测相同，不等于没有移动；不读取私有 `action_success`。即时反馈在 `run.use_memory=false` 时仍可用。 |
+| `memory_records` | `32`，最终工作记忆条数 M，不是 token 限制。 |
+| `memory_pool_policy` | `legacy`，池容量为 `max(M,candidate_count)`；可选 `history_tail`，从当前分支原始档案取有界尾部，显式指定 `memory_pool_records=K>=M`，排除 judge opinion。 |
+| `memory_selection` | `judge`；可选 `tail`，对同一个池保留最后 M 条。池不超过 M 时均跳过无取舍评分，保持原 ID 和顺序。评分选择使用稳定同分规则，原始证据和反证不删除。 |
+
+所有非 B0 方法均要求 `run.candidate_count<=4`，包括 `candidate_coverage=off`；策略拒绝超限配置，不隐式截断。B0 的实际初始采样数为 1。
+
+`run.judge_stop=false` 关闭停止意见；对启用 JEV 的 B1/B3，设为 true 时仅为 `advisory`；B0/B2 即使该标志为 true 仍关闭停止评分。这类意见没有阈值控制，不直接结束行动或搜索，也不能更改客观成功。停止评分的费用仍会消耗预算，后端错误仍可能按正常错误路径终止运行。结果的 `metadata.policy_mechanisms` 记录角色是否启用以及是否实际发生评分或取舍；准确费用以账本为准。
+
+采样数、不同动作数、搜索根候选边数和实际访问边数分别记录。有界补采不保证得到多个动作，记忆发生选择也不证明任务收益。这些选项须在对比条件中显式保存，不能把开发设置视为最佳默认值。
+
+生成候选以唯一正式入口 `parse_generated_proposal(text, *, admissible_actions=())` 校验；`ProposalValidationError` 提供 stage/reason。空公开动作集仍表示未提供合法性限制，不伪造环境动作。内部数据模型默认值保持原约定。
+
+MCTS 可通过研究域的可选 `candidates_for_scope(..., scope=...)` 记录 root/tree/rollout；缺少此可选 hook 的既有 SearchDomain 仍调用原 candidates 接口。遥测不更改 PUCT、回传或动作选择。repair/coverage 的 source 与频次先验独立保存；只可忽略无 ledger/usage 变化且未超额的覆盖补采预算拒绝，已发生费用或部分失败照常传播。
