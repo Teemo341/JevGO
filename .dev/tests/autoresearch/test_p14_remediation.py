@@ -54,3 +54,6 @@ def test_manifest_rejects_unbounded_or_training_conditions():
     manifest["conditions"][0]["run"]["learning_mode"] = "joint"
     with pytest.raises(ValueError, match="frozen"):
         tool.validate_manifest(manifest)
+    manifest["conditions"][0]["run"] = {"budget": {}}
+    with pytest.raises(ValueError, match="run.budget"):
+        tool.validate_manifest(manifest)

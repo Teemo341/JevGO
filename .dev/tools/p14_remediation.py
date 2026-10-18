@@ -60,6 +60,7 @@ class TraceBackend:
         self.backend, self.output, self.semif = backend, output, semif
         self.identity = backend.identity
         self.number = 0
+        self.request_origin = None
 
     def close(self):
         pass
@@ -68,6 +69,20 @@ class TraceBackend:
         self.number += 1
         row = {"call": self.number, "method": method, "phase": UsagePhase(phase).value,
                "request": request.model_dump(mode="json"), "started_unix": time.time()}
+        if method == "generate":
+            origin = self.request_origin
+            for path in (self.output / "episode/events.jsonl", self.output / "probe-events.jsonl"):
+                if path.exists():
+                    rows = [json.loads(line) for line in path.read_text().splitlines()]
+                    last = next((e for e in reversed(rows) if e["event_type"] == "generation_request"), None)
+                    if last and last["payload"]["request"] == row["request"]:
+                        payload = last["payload"]
+                        origin = {"event_id": last["event_id"], "attempt": payload.get("attempt"),
+                                  "source": payload.get("source", "repair" if payload.get("attempt") == 1 else "initial"),
+                                  "repair": payload.get("source") == "repair" if "source" in payload else payload.get("attempt") == 1}
+                        break
+            row["generation_origin"] = origin
+            self.backend.p14_generation_origin = origin
         append(self.output / "logical.jsonl", {"event": "request", **row})
         before, started = len(ledger.entries), time.monotonic()
         captured = []
@@ -150,6 +165,7 @@ def execute_condition(condition, backend, output):
                           usage=run.usage.model_dump(mode="json"), result_path=str(output / "episode/result.json"))
             ledger_data = json.loads((output / "episode/ledger.json").read_text())
         elif kind == "request":
+            trace.request_origin = condition.get("generation_origin")
             response = trace.generate(GenerationRequest.model_validate(condition["request"]), ledger=ledger, phase=UsagePhase.COMMIT)
             from jevgo.research import parse_generated_proposal
             validations = []
@@ -211,6 +227,8 @@ def validate_manifest(manifest):
             raise ValueError("Every condition needs finite request/input/output budgets")
         if c.get("run", {}).get("learning_mode", "none") != "none":
             raise ValueError("P14 only supports frozen inference")
+        if "budget" in c.get("run", {}):
+            raise ValueError("Declare budget once at condition level; run.budget is forbidden")
     return manifest
 
 
@@ -228,10 +246,17 @@ def execute(manifest_path, output, assets):
         write(output / "versions.json", versions())
         if manifest["model"]["backend"] == "jev_9b":
             from p14_context import GuardedBackend, Lengths, service_admission
+            from jevgo.models.autotrust import AutoTrustBackend
+            class AuditedBackend(GuardedBackend):
+                def generate(self, request, **kwargs):
+                    origin = getattr(self, "p14_generation_origin", None) or {}
+                    self.logical = {"role": "generation", "repair": origin.get("repair"),
+                                    "generation_origin": origin}
+                    return AutoTrustBackend.generate(self, request, **kwargs)
             options = dict(manifest["model"])
             key = options.pop("backend")
             write(output / "service-admission.json", service_admission(options["base_url"], options["max_model_len"]))
-            backend = GuardedBackend(key, assets_root=assets, journal=output / "http.jsonl", lengths=Lengths(assets), **options)
+            backend = AuditedBackend(key, assets_root=assets, journal=output / "http.jsonl", lengths=Lengths(assets), **options)
         else:
             backend = build_backend(manifest["model"], assets_root=assets)
         write(output / "model-identity.json", backend.identity.model_dump(mode="json"))
