@@ -33,6 +33,7 @@ def summarize_condition(path):
     ledger_matches = all(math.isclose(accounted.get(k, 0), v, rel_tol=1e-10, abs_tol=1e-7)
                          for k, v in ledger["used"].items())
     role_entries, unknown = defaultdict(list), []
+    ledger_unknown = [e for e in ledger["entries"] if e["metadata"].get("usage_complete") is False]
     for call in finished:
         role = call["request"].get("role", "generation")
         if role == "generation":
@@ -84,7 +85,8 @@ def summarize_condition(path):
     digest = lambda obj: hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     return {"path": str(path.resolve()), "result": result, "checks": checks, "ledger_usage": ledger["used"],
             "cost_by_role": {k: totals(v) for k, v in role_entries.items()}, "unknown_usage": unknown,
-            "http_unknown_usage": raw_unknown, "model_cost_complete": not unknown and not raw_unknown,
+            "ledger_unknown_usage": ledger_unknown,
+            "http_unknown_usage": raw_unknown, "model_cost_complete": not ledger_unknown and not unknown and not raw_unknown,
             "samples": sum(len(p["texts"]) for p in proposals),
             "strict_valid_samples": sum(sum(s["accepted"] for s in p.get("samples", [])) for p in proposals),
             "candidate_calls": len(candidates), "candidate_unique_action_counts": [len(p["candidates"]) for p in candidates],
