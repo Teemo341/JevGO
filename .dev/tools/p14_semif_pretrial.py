@@ -19,7 +19,8 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from jevgo.core import Action, BudgetLedger, BudgetLimits, Candidate, GenerationRequest, Usage, UsagePhase
+from jevgo.core import Action, BudgetLedger, BudgetLimits, GenerationRequest, Usage, UsagePhase
+from jevgo.research import PROPOSAL_CONTRACT, ProposalValidationError, parse_generated_proposal
 
 SOURCES = (
     ("semif-matrix/semif-B0-full-ecaea88c689bda82", "3ad4b1a7b59543969a4fe1763aa48e9f"),
@@ -44,19 +45,6 @@ def provenance() -> dict:
             "device_environment": {key: os.environ.get(key) for key in ("CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES")}}
 
 
-def _unique_pairs(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"Duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
-
-def _bad_constant(value):
-    raise ValueError(f"Nonstandard JSON constant: {value}")
-
-
 def public_actions(request: dict) -> list[dict]:
     # Decode just the saved public state. A captured repair suffix is retained in
     # the request but does not form part of the JSON state.
@@ -65,36 +53,21 @@ def public_actions(request: dict) -> list[dict]:
 
 
 def validate_proposal(text: str, allowed: list[dict] | None) -> dict:
-    """No salvage: only the production parser's complete outer fence is stripped.
-
-    The exact prompt schema is stricter than Candidate's optional defaults.
-    """
+    """Use the production generated-text contract, with explicit unknown legality."""
     result = {"json_valid": False, "schema_valid": None, "public_action_legal": None,
-              "passed": False, "error_stage": None, "error": None}
-    cleaned = text.strip()
-    if cleaned.startswith("```json\n") and cleaned.endswith("```"):
-        cleaned = cleaned[8:-3].strip()
+              "passed": False, "error_stage": None, "error": None,
+              "proposal_contract": PROPOSAL_CONTRACT}
+    actions = tuple(Action.model_validate(action) for action in allowed or ())
     try:
-        obj = json.loads(cleaned, object_pairs_hook=_unique_pairs, parse_constant=_bad_constant)
-        result["json_valid"] = True
-    except (ValueError, TypeError) as exc:
-        return {**result, "error_stage": "json", "error": str(exc)}
-    try:
-        if not isinstance(obj, dict) or set(obj) != {"action", "hypothesis", "rationale"}:
-            raise ValueError("Proposal must contain exactly action, hypothesis and rationale")
-        if not isinstance(obj["action"], dict) or set(obj["action"]) != {"name", "arguments"}:
-            raise ValueError("Action must contain exactly name and arguments")
-        candidate = Candidate.model_validate(obj)
-        result["schema_valid"] = True
-    except (ValueError, TypeError) as exc:
-        return {**result, "schema_valid": False, "error_stage": "schema", "error": str(exc)}
-    if allowed is None or not allowed:
-        return {**result, "error_stage": "public_action", "error": "Public action legality unknown: no admissible set"}
-    keys = {Action.model_validate(action).key() for action in allowed}
-    legal = candidate.action.key() in keys
-    return {**result, "public_action_legal": legal, "passed": legal,
-            "error_stage": None if legal else "public_action",
-            "error": None if legal else "Action is not in the saved public admissible set"}
+        parse_generated_proposal(text, admissible_actions=actions)
+    except ProposalValidationError as exc:
+        return {**result, "json_valid": exc.stage != "json",
+                "schema_valid": None if exc.stage == "json" else exc.stage != "schema",
+                "public_action_legal": False if exc.stage == "public_action" else None,
+                "error_stage": exc.stage, "error": exc.reason}
+    return {**result, "json_valid": True, "schema_valid": True, "passed": True,
+            "public_action_legal": True if actions else None,
+            "legality_note": None if actions else "Unknown: no public admissible set was supplied"}
 
 
 def extract_case(events_path: Path, proposal_id: str) -> dict:

@@ -27,7 +27,10 @@ class Fixture:
         state = self.task(request)
         target = ("forward", "forward", "right", "forward", "forward")[min(len(state["actions"]), 4)]
         names = (target, "left", "right", "forward")
-        texts = tuple("bad" if self.malformed else json.dumps({"action": {"name": names[i % 4]}}) for i in range(request.n))
+        texts = tuple("bad" if self.malformed else json.dumps({
+            "action": {"name": names[i % 4], "arguments": {}},
+            "hypothesis": "unverified fixture observation", "rationale": "fixture action",
+        }) for i in range(request.n))
         usage = Usage(generation_calls=1, model_requests=1, input_tokens=1, output_tokens=len(texts))
         ledger.charge(usage, source="fixture", phase=phase)
         return GenerationResponse(texts=texts, identity=self.identity, usage=usage)
@@ -153,3 +156,63 @@ def test_known_reward_is_backed_up_when_postprocessing_exhausts_budget(tmp_path)
     assert visited[0]["N"] == visited[0]["partial_visits"] == 1
     assert visited[0]["W"] == visited[0]["Q"] == 2
     assert len(result.final_state.actions) == 1
+
+
+@pytest.mark.parametrize("raw", [
+    '{"action":{"name":"forward","arguments":{}}}',
+    '{"action":{"name":"forward","arguments":{}},"hypothesis":"x","hypothesis":"y","rationale":"r"}',
+])
+def test_strict_invalid_generated_samples_do_not_execute(tmp_path, raw):
+    class InvalidFixture(Fixture):
+        def generate(self, request, *, ledger, phase):
+            usage = Usage(generation_calls=1, model_requests=1, output_tokens=7)
+            ledger.charge(usage, source="invalid_fixture", phase=phase)
+            return GenerationResponse(texts=(raw,) * request.n, identity=self.identity, usage=usage)
+
+    result = run_episode(episode(), RunConfig(method="B0"), MiniGridAdapter(), InvalidFixture(),
+                         output_dir=tmp_path / "strict-invalid")
+    assert result.termination_reason == TerminationReason.INVALID_CANDIDATES
+    assert result.final_state.actions == ()
+    assert result.usage.env_steps == 2  # Existing capability check, no proposal execution.
+    assert result.usage.generation_calls == result.usage.model_requests == 2
+    assert result.usage.output_tokens == 14
+
+
+def test_only_independent_valid_repair_executes_and_retains_source(tmp_path):
+    class RepairedFixture(Fixture):
+        def __init__(self):
+            super().__init__()
+            self.requests = []
+
+        def generate(self, request, *, ledger, phase):
+            self.requests.append(request)
+            usage = Usage(generation_calls=1, model_requests=1, output_tokens=7)
+            ledger.charge(usage, source="repaired_fixture", phase=phase)
+            raw = ('{"action":{"name":"left","arguments":{}},"hypothesis":"bad",'
+                   '"hypothesis":"duplicate","rationale":"bad"}') if len(self.requests) == 1 else json.dumps({
+                       "action": {"name": "right", "arguments": {}},
+                       "hypothesis": "unverified right turn", "rationale": "valid new sample"})
+            return GenerationResponse(texts=(raw,), identity=self.identity, usage=usage)
+
+    model = RepairedFixture()
+    result = run_episode(episode(), RunConfig(method="B0", max_steps=1, options={"proposal_repair": "bounded"}),
+                         MiniGridAdapter(), model, output_dir=tmp_path / "repaired")
+    assert result.termination_reason == TerminationReason.MAX_STEPS
+    assert [a.name for a in result.final_state.actions] == ["right"]
+    assert result.usage.generation_calls == result.usage.model_requests == 2
+    assert result.usage.env_steps == 3  # Two verification steps, one repaired action.
+    events = [json.loads(line) for line in (tmp_path / "repaired/events.jsonl").read_text().splitlines()]
+    candidate = next(e["payload"] for e in events if e["event_type"] == "candidates")
+    assert candidate["candidate_sources"][0]["sources"] == [{"attempt": 1, "sample_index": 0}]
+    sample_events = [e["payload"] for e in events if e["event_type"] == "proposal_samples"]
+    assert sample_events[0]["samples"][0]["error_stage"] == "json"
+    assert sample_events[1]["samples"][0]["accepted"]
+
+
+def test_repair_budget_interruption_is_not_an_environment_action(tmp_path):
+    result = run_episode(episode(), RunConfig(method="B0", budget=BudgetLimits(generation_calls=1)),
+                         MiniGridAdapter(), Fixture(malformed=True), output_dir=tmp_path / "repair-budget")
+    assert result.termination_reason == TerminationReason.BUDGET_EXHAUSTED
+    assert result.final_state.actions == () and not result.success
+    assert result.usage.generation_calls == result.usage.model_requests == 1
+    assert result.usage.env_steps == 2

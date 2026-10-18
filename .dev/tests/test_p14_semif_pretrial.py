@@ -42,7 +42,29 @@ def test_reject_incomplete_or_nonconforming(text, stage):
 def test_complete_fence_and_unknown_public_legality():
     assert pretrial.validate_proposal('```json\n' + VALID + '\n```', [ACTION])["passed"]
     result = pretrial.validate_proposal(VALID, None)
-    assert result["schema_valid"] and result["public_action_legal"] is None and not result["passed"]
+    assert result["schema_valid"] and result["public_action_legal"] is None and result["passed"]
+    assert result["legality_note"].startswith("Unknown:")
+
+
+@pytest.mark.parametrize("text", [
+    VALID, '```json\n' + VALID + '\n```', VALID[:-1],
+    '{"action":{"name":"forward","arguments":{"x":[{"a":1,"a":2}]}},"hypothesis":"h","rationale":"r"}',
+    VALID.replace('"arguments": {}', '"arguments": {"value":1e999}'),
+    VALID.replace('"arguments": {}', '"arguments": []'),
+    VALID.replace('"forward"', '"right"'),
+])
+@pytest.mark.parametrize("allowed", [[ACTION], [], None])
+def test_development_validation_uses_production_contract(text, allowed):
+    from jevgo.research import ProposalValidationError, parse_generated_proposal
+    actions = tuple(pretrial.Action.model_validate(action) for action in allowed or ())
+    result = pretrial.validate_proposal(text, allowed)
+    try:
+        parse_generated_proposal(text, admissible_actions=actions)
+    except ProposalValidationError as exc:
+        assert not result["passed"]
+        assert result["error_stage"] == exc.stage and result["error"] == exc.reason
+    else:
+        assert result["passed"] and result["error_stage"] is None
 
 
 def test_capture_preserves_generate_and_observes_eos():

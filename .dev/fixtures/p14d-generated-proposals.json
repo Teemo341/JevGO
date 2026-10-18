@@ -1,0 +1,88 @@
+{
+  "cases": [
+    {
+      "case_id": "historical-valid",
+      "source": {
+        "path": "/mnt/nas-tianwen/home/ssy/JevGO/.dev/artifacts/P14-20261017-pretrial/b/loops/output256-seed0-sim8/events.jsonl",
+        "file_sha256": "a425fcf80f60079eb313231fbfa29e25abdda21ecd70f7908c0caae4ca5b8597",
+        "proposal_line": 35,
+        "proposal_event_id": "2857b2bc9c3c468e8cffade59b9d2c5d",
+        "request_line": 31,
+        "runtime_commit": "955df143e7e2db059cb870e8d4fed9e9741621a2"
+      },
+      "text": "```json\n{\n  \"action\": {\n    \"name\": \"forward\",\n    \"arguments\": {}\n  },\n  \"hypothesis\": \"The agent moves one step forward, revealing the content of the cell directly north and potentially progressing toward the goal.\",\n  \"rationale\": \"The agent is currently facing direction 0 (east) but the local view description states 'agent at bottom center facing upward'. However, the action history shows 'forward' was just taken, and the grid shows empty cells and the goal to the North (row 6, col 5) relative to the agent's current position if we assume standard MiniGrid rendering where 'up' in the text description corresponds to the higher row index in the provided grid list. The grid shows the goal at the second to last row. Moving forward (based on the last action) should lead toward the goal area if the orientation aligns with the grid layout provided. The hypothesis predicts a state change revealing new information or confirming the path.\"\n}\n```\n",
+      "admissible_actions": [
+        {
+          "name": "left",
+          "arguments": {}
+        },
+        {
+          "name": "right",
+          "arguments": {}
+        },
+        {
+          "name": "forward",
+          "arguments": {}
+        },
+        {
+          "name": "pickup",
+          "arguments": {}
+        },
+        {
+          "name": "drop",
+          "arguments": {}
+        },
+        {
+          "name": "toggle",
+          "arguments": {}
+        },
+        {
+          "name": "done",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "case_id": "historical-duplicate-hypothesis",
+      "source": {
+        "path": "/mnt/nas-tianwen/home/ssy/JevGO/.dev/artifacts/P14-20261017-pretrial/b/loops/output256-seed0-sim8/events.jsonl",
+        "file_sha256": "a425fcf80f60079eb313231fbfa29e25abdda21ecd70f7908c0caae4ca5b8597",
+        "proposal_line": 45,
+        "proposal_event_id": "1d3b9c675994443a88aec3fb5df2e405",
+        "request_line": 41,
+        "runtime_commit": "955df143e7e2db059cb870e8d4fed9e9741621a2"
+      },
+      "text": "{\"action\":{\"name\":\"forward\",\"arguments\":{}},\"hypothesis\":\"The agent moves forward and the observation updates to show the cell directly north of the current position.\",\"rationale\":\"The mission is to reach the green goal square. The current observation shows the goal is located two steps ahead in the row visible to the agent. Moving forward is a direct step toward the goal and is supported by the previous action history of moving forward twice.\",\"hypothesis\":\"expected observation\",\"rationale\":\"reason\"}\n",
+      "admissible_actions": [
+        {
+          "name": "left",
+          "arguments": {}
+        },
+        {
+          "name": "right",
+          "arguments": {}
+        },
+        {
+          "name": "forward",
+          "arguments": {}
+        },
+        {
+          "name": "pickup",
+          "arguments": {}
+        },
+        {
+          "name": "drop",
+          "arguments": {}
+        },
+        {
+          "name": "toggle",
+          "arguments": {}
+        },
+        {
+          "name": "done",
+          "arguments": {}
+        }
+      ]
+    }
+  ]
+}

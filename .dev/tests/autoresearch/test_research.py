@@ -1,13 +1,17 @@
 import json
+from pathlib import Path
 
 import pytest
 
 from jevgo.core import (
-    Action, BudgetLedger, BudgetLimits, Candidate, EpisodeSpec, EvidenceKind,
+    Action, BudgetExceeded, BudgetLedger, BudgetLimits, Candidate, EpisodeSpec, EvidenceKind,
     GenerationResponse, InvalidCandidate, JSONLEventStore, JudgeResponse, ModelFailure, ModelIdentity,
     Observation, RunConfig, StepResult, Usage, UsagePhase,
 )
-from jevgo.research import ResearchPolicy, initialize_state, public_state, record_transition
+from jevgo.research import (
+    ProposalValidationError, ResearchPolicy, initialize_state, parse_generated_proposal,
+    public_state, record_transition,
+)
 
 
 class Model:
@@ -30,7 +34,8 @@ class Model:
 
 
 def proposal(name):
-    return json.dumps({"action": {"name": name}, "hypothesis": "unverified " + name})
+    return json.dumps({"action": {"name": name, "arguments": {}},
+                       "hypothesis": "unverified " + name, "rationale": "test proposal"})
 
 
 def state():
@@ -218,3 +223,187 @@ def test_repair_attempt_logs_each_request_once_before_response(tmp_path):
         assert request_event.payload["request"]["prompt"] == generator.requests[attempt].prompt
         assert "request" not in response_event.payload
     assert generator.requests[0].prompt != generator.requests[1].prompt
+
+
+@pytest.mark.parametrize("text,stage", [
+    ('{"action":{},"action":{},"hypothesis":"h","rationale":"r"}', "json"),
+    ('{"action":{"name":"a","arguments":{"nested":[{"x":1,"x":2}]}},"hypothesis":"h","rationale":"r"}', "json"),
+    ('{"action":{"name":"a","name":"b","arguments":{}},"hypothesis":"h","rationale":"r"}', "json"),
+    *[(proposal("a").replace('"arguments": {}', '"arguments": {"value":' + value + '}'), "json")
+      for value in ("NaN", "Infinity", "-Infinity", "1e999", "-1e999")],
+    ('{}', "schema"),
+    ('[]', "schema"),
+    ('null', "schema"),
+    ('{"action":{"name":"a","arguments":{}}}', "schema"),
+    (proposal("a").replace(', "rationale": "test proposal"', ''), "schema"),
+    (proposal("a").replace('"arguments": {}', '"arguments": {}, "extra": 1'), "schema"),
+    (proposal("a")[:-1] + ', "prior":1}', "schema"),
+    (proposal("a").replace(', "arguments": {}', ''), "schema"),
+    *[(proposal("a").replace('"arguments": {}', '"arguments": ' + value), "schema")
+      for value in ('[]', 'null', 'false', '"{}"')],
+    *[(proposal("a").replace('"name": "a"', '"name": ' + value), "schema")
+      for value in ('1', 'null', 'false', '""')],
+    (proposal("a").replace('"unverified a"', '7'), "schema"),
+    (proposal("a").replace('"test proposal"', 'null'), "schema"),
+    (proposal("a")[:-1], "json"),
+    ('prefix ' + proposal("a"), "json"),
+    (proposal("a") + ' trailing', "json"),
+    (proposal("a") + proposal("b"), "json"),
+    ('```json\n' + proposal("a"), "json"),
+    ('```\n' + proposal("a") + '\n```', "json"),
+    ('```JSON\n' + proposal("a") + '\n```', "json"),
+    ('```json\r\n' + proposal("a") + '\r\n```', "json"),
+    (proposal("illegal"), "public_action"),
+    (proposal("a").replace('"arguments": {}', '"arguments": {"invented":1}'), "public_action"),
+])
+def test_generated_text_contract_rejects_without_salvage(text, stage):
+    with pytest.raises(ProposalValidationError) as caught:
+        parse_generated_proposal(text, admissible_actions=state().observation.admissible_actions)
+    assert caught.value.stage == stage
+    assert caught.value.reason
+
+
+def test_generated_text_complete_fence_nested_json_and_internal_defaults():
+    action = Action(name="a", arguments={"a": [True, None, 1, 1.5, {"x": "unicode 🐍"}]})
+    text = json.dumps({"action": action.model_dump(mode="json"), "hypothesis": "", "rationale": ""})
+    for raw in (text, ' \n```json\n' + text + '\n``` \n'):
+        assert parse_generated_proposal(raw, admissible_actions=(action,)).action == action
+    assert parse_generated_proposal(proposal("unlisted")).action.name == "unlisted"
+    # The generated-text boundary must not make internal convenience defaults mandatory.
+    assert Candidate(action=Action(name="a")).hypothesis == ""
+    assert Candidate(action={"name": "a"}).action.arguments == {}
+
+
+def test_historical_p14_duplicate_rejected_and_legal_sample_accepted():
+    fixture = Path(__file__).resolve().parents[2] / "fixtures/p14d-generated-proposals.json"
+    cases = json.loads(fixture.read_text())["cases"]
+    legal, duplicate = cases
+    actions = tuple(Action.model_validate(a) for a in legal["admissible_actions"])
+    assert parse_generated_proposal(legal["text"], admissible_actions=actions).action.name == "forward"
+    assert json.loads(duplicate["text"])["action"]["name"] == "forward"  # Original last-wins gap.
+    with pytest.raises(ProposalValidationError, match="Duplicate JSON key: hypothesis"):
+        parse_generated_proposal(duplicate["text"], admissible_actions=actions)
+    assert duplicate["source"]["proposal_line"] == 45
+
+
+class SequenceModel(Model):
+    def __init__(self, batches):
+        super().__init__()
+        self.batches = iter(batches)
+
+    def generate(self, request, *, ledger, phase):
+        self.texts = next(self.batches)
+        return super().generate(request, ledger=ledger, phase=phase)
+
+
+def test_partial_valid_sources_and_per_sample_rejection_are_retained(tmp_path):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    generator = Model((proposal("a"), "bad", proposal("a"), proposal("illegal")))
+    choices = ResearchPolicy(generator, None, RunConfig(method="B2"), events=store).candidates(
+        state(), ledger=BudgetLedger())
+    assert len(generator.requests) == 1 and choices[0].sample_count == 2
+    samples, candidates = store.read()[1:]
+    assert samples.payload["texts"] == generator.texts
+    assert [item["error_stage"] for item in samples.payload["samples"]] == [None, "json", None, "public_action"]
+    assert samples.payload["valid_sample_count"] == 2
+    assert samples.payload["unique_action_count"] == 1
+    sources = candidates.payload["candidate_sources"][0]
+    assert sources["candidate_id"] == choices[0].candidate_id
+    assert sources["sources"] == ({"attempt": 0, "sample_index": 0}, {"attempt": 0, "sample_index": 2})
+
+
+@pytest.mark.parametrize("strategy", ["generic", "bounded"])
+def test_zero_valid_repair_is_separate_bounded_and_traceable(tmp_path, strategy):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    malformed = "first bad output " + "🐍" * 100 + "END-MUST-NOT-APPEAR"
+    generator = SequenceModel(((malformed, "SECOND-BAD-SAMPLE"), (proposal("b"), proposal("b"))))
+    config = RunConfig(method="B2", candidate_count=2, seed=11, options={
+        "proposal_repair": strategy, "proposal_repair_text_chars": 20,
+        "proposal_repair_error_chars": 8, "max_new_tokens": 256})
+    ledger = BudgetLedger()
+    choices = ResearchPolicy(generator, None, config, events=store).candidates(state(), ledger=ledger)
+    first, repair = generator.requests
+    assert [request.seed for request in generator.requests] == [11, 12]
+    assert first.model_dump(exclude={"prompt", "seed"}) == repair.model_dump(exclude={"prompt", "seed"})
+    assert repair.max_new_tokens == 256 and repair.n == 2 and repair.temperature == .7
+    assert ledger.used.generation_calls == ledger.used.model_requests == 2 and ledger.used.env_steps == 0
+    assert [c.action.name for c in choices] == ["b"] and choices[0].sample_count == 2
+    events = store.read()
+    assert events[1].payload["texts"][0] == malformed
+    assert events[3].payload["texts"] == (proposal("b"), proposal("b"))
+    assert events[4].payload["candidate_sources"][0]["sources"] == (
+        {"attempt": 1, "sample_index": 0}, {"attempt": 1, "sample_index": 1})
+    if strategy == "generic":
+        assert repair.prompt == first.prompt + "\nThe previous proposals were invalid. Return only the required JSON object."
+        assert events[2].payload["repair_source"] == {}
+    else:
+        diagnostic = json.JSONDecoder().raw_decode(repair.prompt.split("Unicode characters:\n")[1])[0]
+        assert diagnostic["invalid_output"] == malformed[:20]
+        assert len(diagnostic["error"]) == 8 and diagnostic["sample_index"] == 0
+        assert "END-MUST-NOT-APPEAR" not in repair.prompt and "SECOND-BAD-SAMPLE" not in repair.prompt
+        source = events[2].payload["repair_source"]
+        assert source["source_sample_index"] == source["source_attempt"] == 0
+        assert source["text_char_limit"] == source["text_chars"] == 20
+        assert source["text_chars_total"] == len(malformed)
+
+
+def test_bounded_repair_failure_stops_after_one_and_preserves_reasons(tmp_path):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    generator = Model(("bad",))
+    ledger = BudgetLedger()
+    policy = ResearchPolicy(generator, None, RunConfig(method="B0", options={"proposal_repair": "bounded"}), events=store)
+    with pytest.raises(InvalidCandidate, match="one repair attempt"):
+        policy.candidates(state(), ledger=ledger)
+    assert len(generator.requests) == ledger.used.generation_calls == 2
+    assert ledger.used.env_steps == 0
+    assert [event.payload["samples"][0]["error_stage"] for event in store.read()
+            if event.event_type == "proposal_samples"] == ["json", "json"]
+
+
+def test_repair_budget_rejection_preserves_first_response_and_cost(tmp_path):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    ledger = BudgetLedger(BudgetLimits(generation_calls=1), event_store=store)
+    generator = Model(("bad",))
+    with pytest.raises(BudgetExceeded):
+        ResearchPolicy(generator, None, RunConfig(method="B0"), events=store).candidates(state(), ledger=ledger)
+    assert ledger.used.generation_calls == ledger.used.model_requests == 1 and ledger.used.env_steps == 0
+    assert [e.payload["attempt"] for e in store.read() if e.event_type == "generation_request"] == [0, 1]
+    assert len([e for e in store.read() if e.event_type == "proposal_samples"]) == 1
+
+
+def test_failed_repair_preserves_backend_unknown_usage_and_raw_response(tmp_path):
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    ledger = BudgetLedger(event_store=store)
+
+    class FailedRepair(Model):
+        def generate(self, request, *, ledger, phase):
+            if self.requests:
+                self.requests.append(request)
+                ledger.charge(Usage(generation_calls=1, model_requests=1, input_tokens=37),
+                              source="fixture.failed", phase=phase, failed=True,
+                              metadata={"usage_complete": False, "unknown_usage": ["output_tokens"]})
+                raise ModelFailure("repair decode failed; output usage unknown")
+            response = super().generate(request, ledger=ledger, phase=phase)
+            return response.model_copy(update={"metadata": {"original_backend_note": "retained"}})
+
+    generator = FailedRepair(("bad",))
+    with pytest.raises(ModelFailure, match="repair decode failed"):
+        ResearchPolicy(generator, None, RunConfig(method="B0"), events=store).candidates(state(), ledger=ledger)
+    assert ledger.used.generation_calls == ledger.used.model_requests == 2
+    assert ledger.used.input_tokens == 37 and ledger.used.env_steps == 0
+    failure = ledger.summary()["entries"][-1]
+    assert failure["failed"] and failure["metadata"]["unknown_usage"] == ["output_tokens"]
+    response = next(e for e in store.read() if e.event_type == "proposal_samples")
+    assert response.payload["texts"] == ("bad",)
+    assert response.payload["metadata"]["original_backend_note"] == "retained"
+
+
+@pytest.mark.parametrize("options", [
+    {"proposal_repair": "unlimited"}, {"proposal_repair_text_chars": 0},
+    {"proposal_repair_error_chars": True}, {"proposal_repair_text_chars": 1.5},
+])
+def test_invalid_repair_config_rejected_before_calls(options):
+    generator = Model()
+    with pytest.raises(ValueError):
+        ResearchPolicy(generator, None, RunConfig(method="B0", options=options))
+    assert not generator.requests
