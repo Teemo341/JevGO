@@ -3,7 +3,7 @@
 ## 目标与范围
 冻结参数，贯通显式状态、LLM候选、JEV评估、真实执行、MCTS和终止。先MiniGrid，再ALFWorld、ScienceWorld、DiscoveryWorld；沿用当前三个AutoTrust checkpoint和SemIf。
 默认 learning_mode=none；其他模式显式报未实现。首轮交付CPU算法/真实环境验收及GPU交接，不将mock、下载成功或小fixture当作模型效果。
-用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。截至2026-10-15，四模型真实生成/评分及64次开发矩阵已完成；GPU修复统一集成见P13。正式benchmark与算法效果仍待验证。
+用户已授权独立branch/worktree、并行agent、本地任务提交，以及开发源码入Git。截至2026-10-19，首版、P13统一GPU复核、P14有限预试及CPU行为追查已完成各自所述范围；P14保留executed_with_failures。下一轮[P14d–i修正与最小验证](P14-REMEDIATION.md)已规划，尚未实施。正式benchmark与算法效果仍待验证。
 
 ## 任务表
 | 任务 | 环节 | 依赖 | 状态 |
@@ -23,12 +23,13 @@
 | [P12 集成验收与GPU交接](P12-integration.md) | EVAL | P08,P09,P10,P11 | development_gpu_round_complete |
 | [P13 GPU修复统一集成](P13-gpu-integration.md) | EVAL、AR-2/5/7 | P03,P04,P11,P12 | complete |
 | [P14 正式实验前预试](P14-pretrial.md) | EVAL、AR-2/5/7 | P13 | executed_with_failures |
+| [P14d–i 后续修正与最小验证](P14-REMEDIATION.md)（P14子任务） | EVAL、AR-2至7 | P14结果/行为诊断 | planned_not_started |
 
 ## 依赖与调度
 P00 → P01；P02/P03/P04/P05/P06/P08/P09/P10随后可独立开发。P07等待P02至P06；P11等待P07；P12等待P08至P11及传递依赖。
 优先队列：P02/P03，P05/P06，P04/P08，P07/P09，P10/P11，P12。按依赖动态调度，不人为等待同组全部结束。
 主控1＋实现2＋审查1；子agent首选gpt-6-astra ultra。各实现任务独立codex/ar-pXX-*与.dev/worktrees/PXX。共享契约、CLI、公共配置由owner改。
-主控集成分支codex/autoresearch。记录base和交付SHA、命令与退出码；仅本地提交，不推送。
+主控集成分支codex/autoresearch。记录base和交付SHA、命令与退出码；本地任务不自动推送，确需AutoDL时按当前AGENTS/技能同步已审查的分支与commit。
 
 ## 已固定算法
 单智能体同步PUCT：P/N/W/Q，真实rollout回传，不交替符号。基础先验为候选采样频次，JEV开启后与归一化偏好等权混合。仅剔除非法候选，不因低分永久剪枝。
@@ -45,7 +46,7 @@ B0顺序LLM；B1 JEV重排贪心；B2无JEV MCTS；B3完整方法。候选/工�
 2. 环境：真实reset/step、成功语义、恢复能力实测。
 3. 模型：指定checkpoint真实生成评分；硬件、配置、token及内部请求。
 4. 研究：固定任务seed/权限/预算的对比与消融，报告成功率/成本，不预设增益。
-前三层的已述范围及开发矩阵已完成；统一修复版组合CPU/GPU验收已通过；P14有限GPU预试、工具及成本审查已执行，格式失败和未完成单项验收保留，见[P14结果](P14-RESULTS.md)；已具备P15设计讨论依据，但正式协议尚未冻结、P15未启动；第四层正式研究效果未完成。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
+前三层的已述范围及开发矩阵已完成；统一修复版组合CPU/GPU验收已通过；P14有限GPU预试、工具及成本审查已执行，格式失败和未完成单项验收保留，见[P14结果](P14-RESULTS.md)；已具备P15设计讨论依据，先按P14d–i处理确定缺陷和方法语义；正式协议尚未冻结、P15未启动；第四层正式研究效果未完成。ALFWorld正式数据缺失，小fixture只作接口验收。GPU先9B再其他；资源不足不擅自量化/换模型。
 
 ## 外部交接
 任务卡包含背景、分支/worktree/base SHA、可改范围、环境与资源、准确命令、验收和回收格式。GPU专用文档已用最终CLI填充。超出工具或长期资源能力时单列阻塞，其余任务继续。
