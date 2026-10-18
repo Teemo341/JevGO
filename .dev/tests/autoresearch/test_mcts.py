@@ -384,3 +384,46 @@ def test_partial_backup_updates_every_completed_path_edge_once(monkeypatch):
     assert partial_stats == [(3, 5, 1), (2, 4, 1)]
     assert result.rootstats[0].W == 5
     assert ledger.used.env_steps == 2
+
+
+def test_optional_proposal_scope_hook_distinguishes_root_tree_and_rollout():
+    class ScopedGraph(GraphDomain):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.scopes = []
+
+        def candidates_for_scope(self, state, *, scope, phase):
+            self.scopes.append((state.research.observation.text, scope))
+            return self.candidates(state, phase=phase)
+
+    graph = {"root": {"go": ("a", 1)}, "a": {"go": ("b", 2)}, "b": {"go": ("end", 3)}}
+    scoped = ScopedGraph(graph, terminal=("end",))
+    legacy = GraphDomain(graph, terminal=("end",))
+    actual = run(scoped, simulations=3, max_depth=3, rollout_depth=1)
+    expected = run(legacy, simulations=3, max_depth=3, rollout_depth=1)
+    assert scoped.scopes == [("root", "root"), ("a", "rollout"), ("a", "tree"),
+                             ("b", "rollout"), ("b", "tree")]
+    assert transitions(scoped) == transitions(legacy)
+    assert [(e.P, e.N, e.W, e.Q) for e in actual.rootstats] == [
+        (e.P, e.N, e.W, e.Q) for e in expected.rootstats]
+
+
+@pytest.mark.parametrize("scores,first_action", [((0, 1), "b"), ((1, 0), "a")])
+def test_real_policy_judge_prior_changes_puct_selection_without_pruning(scores, first_action):
+    from test_research import Model, proposal
+    from jevgo.research import ResearchPolicy
+
+    policy = ResearchPolicy(Model((proposal("a"), proposal("b")) * 2), Model(scores=scores),
+                            RunConfig(method="B3"))
+    class PolicyGraph(GraphDomain):
+        def candidates_for_scope(self, state, *, scope, phase):
+            return policy.candidates(state.research, ledger=self.ledger, phase=phase, proposal_scope=scope)
+    domain = PolicyGraph({"root": {"a": ("ta", 2), "b": ("tb", 3)}}, terminal=("ta", "tb"))
+    result = run(domain, simulations=8, c_puct=8, rollout_depth=0)
+    assert transitions(domain)[0][2] == first_action
+    assert len(result.rootstats) == 2 and all(edge.N > 0 for edge in result.rootstats)
+    by_action = edge_stats(result)
+    assert by_action[first_action].P == .75
+    assert by_action["a"].W == 2 * by_action["a"].N and by_action["a"].Q == 2
+    assert by_action["b"].W == 3 * by_action["b"].N and by_action["b"].Q == 3
+    assert domain.ledger.used.generation_calls == domain.ledger.used.judge_calls == 1

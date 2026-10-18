@@ -309,7 +309,7 @@ def test_partial_valid_sources_and_per_sample_rejection_are_retained(tmp_path):
     assert samples.payload["unique_action_count"] == 1
     sources = candidates.payload["candidate_sources"][0]
     assert sources["candidate_id"] == choices[0].candidate_id
-    assert sources["sources"] == ({"attempt": 0, "sample_index": 0}, {"attempt": 0, "sample_index": 2})
+    assert sources["sources"] == ({"attempt": 0, "source": "initial", "sample_index": 0}, {"attempt": 0, "source": "initial", "sample_index": 2})
 
 
 @pytest.mark.parametrize("strategy", ["generic", "bounded"])
@@ -332,7 +332,7 @@ def test_zero_valid_repair_is_separate_bounded_and_traceable(tmp_path, strategy)
     assert events[1].payload["texts"][0] == malformed
     assert events[3].payload["texts"] == (proposal("b"), proposal("b"))
     assert events[4].payload["candidate_sources"][0]["sources"] == (
-        {"attempt": 1, "sample_index": 0}, {"attempt": 1, "sample_index": 1})
+        {"attempt": 1, "source": "repair", "sample_index": 0}, {"attempt": 1, "source": "repair", "sample_index": 1})
     if strategy == "generic":
         assert repair.prompt == first.prompt + "\nThe previous proposals were invalid. Return only the required JSON object."
         assert events[2].payload["repair_source"] == {}
@@ -515,3 +515,168 @@ def test_invalid_public_observation_mode_rejected_before_calls():
     with pytest.raises(ValueError, match="public_observation"):
         public_state(state(), public_observation="hidden")
     assert not generator.requests
+
+
+class BatchModel(Model):
+    def __init__(self, batches):
+        super().__init__()
+        self.batches = list(batches)
+
+    def generate(self, request, *, ledger, phase):
+        self.texts = self.batches[len(self.requests)]
+        return super().generate(request, ledger=ledger, phase=phase)
+
+
+def coverage_policy(tmp_path, batches, *, method="B2", **options):
+    generator = BatchModel(batches)
+    store = JSONLEventStore(tmp_path / "events.jsonl")
+    return ResearchPolicy(generator, None, RunConfig(method=method,
+        options={"candidate_coverage": "bounded", **options}), events=store), generator, store
+
+
+def test_bounded_coverage_merges_only_strict_samples_and_keeps_same_prompt(tmp_path):
+    policy, generator, store = coverage_policy(tmp_path, [
+        (proposal("a"),) * 4, (proposal("b"), proposal("a"), "bad", proposal("b"))])
+    ledger = BudgetLedger()
+    values = policy.candidates(state(), ledger=ledger, proposal_scope="root")
+    assert [v.action.name for v in values] == ["a", "b"]
+    assert [v.sample_count for v in values] == [5, 2]
+    assert [v.prior for v in values] == pytest.approx([5 / 7, 2 / 7])
+    assert generator.requests[0].prompt == generator.requests[1].prompt
+    assert generator.requests[1].seed == generator.requests[0].seed + 1
+    assert ledger.used.generation_calls == ledger.used.model_requests == 2
+    events = store.read()
+    requests = [e.payload for e in events if e.event_type == "generation_request"]
+    assert [e["source"] for e in requests] == ["initial", "coverage"]
+    assert [e["attempt"] for e in requests] == [0, 1]
+    assert all(e["proposal_scope"] == "root" for e in requests)
+    result = events[-1].payload
+    assert result["sample_count"] == 8 and result["valid_sample_count"] == 7
+    assert result["unique_action_count"] == 2 and not result["single_candidate"]
+    assert result["coverage_rounds"] == 1 and result["coverage_status"] == "target_met_after_coverage"
+    assert result["frequency_distribution"] == "same_original_prompt"
+    assert sum(len(item["sources"]) for item in result["candidate_sources"]) == 7
+
+
+@pytest.mark.parametrize("second", [("bad",) * 4, (proposal("a"),) * 4])
+def test_coverage_cannot_add_repair_or_loop_until_satisfied(tmp_path, second):
+    policy, generator, store = coverage_policy(tmp_path, [(proposal("a"),) * 4, second])
+    values = policy.candidates(state(), ledger=BudgetLedger())
+    assert len(generator.requests) == 2 and len(values) == 1
+    assert values[0].sample_count == (4 if second[0] == "bad" else 8)
+    assert store.read()[-1].payload["coverage_status"] == "coverage_target_unmet"
+
+
+def test_initial_all_invalid_gets_repair_only_even_if_coverage_still_insufficient(tmp_path):
+    policy, generator, store = coverage_policy(tmp_path, [("bad",) * 4, (proposal("a"),) * 4])
+    values = policy.candidates(state(), ledger=BudgetLedger())
+    requests = [e.payload for e in store.read() if e.event_type == "generation_request"]
+    assert [e["source"] for e in requests] == ["initial", "repair"]
+    assert generator.requests[1].prompt != generator.requests[0].prompt
+    assert values[0].sample_count == 4
+    result = store.read()[-1].payload
+    assert result["coverage_rounds"] == 0 and result["coverage_status"] == "repair_only"
+    assert result["frequency_distribution"] == "conditional_repair_prompt"
+
+
+@pytest.mark.parametrize("scenario", ["off", "b0", "singleton", "already_two"])
+def test_no_extra_call_when_disabled_inapplicable_or_target_met(tmp_path, scenario):
+    n = 1 if scenario == "b0" else 4
+    texts = (proposal("a"),) * n if scenario != "already_two" else (proposal("a"), proposal("b")) * 2
+    policy, generator, _ = coverage_policy(tmp_path, [texts], method="B0" if scenario == "b0" else "B2",
+                                            candidate_coverage="off" if scenario == "off" else "bounded")
+    initial = state()
+    if scenario == "singleton":
+        initial = initial.evolve(observation=Observation(text="one action", admissible_actions=(Action(name="a"),)))
+    policy.candidates(initial, ledger=BudgetLedger())
+    assert len(generator.requests) == 1
+
+
+@pytest.mark.parametrize("phase", [UsagePhase.SEARCH, UsagePhase.COMMIT])
+def test_unspent_coverage_budget_refusal_preserves_candidates_and_commit_reserve(tmp_path, phase):
+    policy, generator, store = coverage_policy(tmp_path, [(proposal("a"),) * 4, (proposal("b"),) * 4])
+    ledger = BudgetLedger(BudgetLimits(generation_calls=2 if phase == UsagePhase.SEARCH else 1),
+                          commit_reserve=Usage(generation_calls=1) if phase == UsagePhase.SEARCH else Usage())
+    values = policy.candidates(state(), ledger=ledger, phase=phase)
+    assert len(values) == 1 and values[0].action.name == "a"
+    assert ledger.used.generation_calls == 1 and len(ledger.entries) == 1
+    assert store.read()[-1].payload["coverage_status"] == "coverage_budget_limited"
+    assert store.read()[-1].payload["generation_calls_attempted"] == 2
+    assert store.read()[-1].payload["generation_calls_completed"] == 1
+    assert any(e.event_type == "coverage_budget_limited" and not e.payload["charged"] for e in store.read())
+    if phase == UsagePhase.SEARCH:
+        assert ledger.remaining(phase=UsagePhase.COMMIT)["generation_calls"] == 1
+
+
+@pytest.mark.parametrize("failure", ["charged_budget", "zero_entry_budget", "model_error"])
+def test_coverage_errors_after_admission_are_not_swallowed(tmp_path, failure):
+    class FailingCoverage(BatchModel):
+        def generate(self, request, *, ledger, phase):
+            if self.requests:
+                self.requests.append(request)
+                ledger.record(Usage(model_requests=int(failure != "zero_entry_budget")),
+                              source="failed_partial", phase=phase, failed=True)
+                if failure == "model_error":
+                    raise ModelFailure("real backend failure")
+                raise BudgetExceeded(("model_requests",), phase)
+            return super().generate(request, ledger=ledger, phase=phase)
+    generator = FailingCoverage([(proposal("a"),) * 4])
+    policy = ResearchPolicy(generator, None, RunConfig(method="B2", options={"candidate_coverage": "bounded"}),
+                            events=JSONLEventStore(tmp_path / "events.jsonl"))
+    ledger = BudgetLedger()
+    with pytest.raises(ModelFailure if failure == "model_error" else BudgetExceeded):
+        policy.candidates(state(), ledger=ledger)
+    assert len(ledger.entries) == 2 and ledger.entries[-1].failed
+    assert not any(e.event_type == "coverage_budget_limited" for e in policy.events.read())
+
+
+def test_existing_measured_overage_cannot_be_hidden_as_optional_coverage(tmp_path):
+    class OverBudget(BatchModel):
+        def generate(self, request, *, ledger, phase):
+            if self.requests:
+                ledger.ensure_available(Usage(), phase=phase)
+            response = super().generate(request, ledger=ledger, phase=phase)
+            ledger.record(Usage(input_tokens=2), source="measured-overage", phase=phase)
+            return response
+    model = OverBudget([(proposal("a"),) * 4])
+    policy = ResearchPolicy(model, None, RunConfig(method="B2", options={"candidate_coverage": "bounded"}))
+    with pytest.raises(BudgetExceeded):
+        policy.candidates(state(), ledger=BudgetLedger(BudgetLimits(input_tokens=1)))
+
+
+def test_policy_rejects_over_eight_samples_without_changing_general_config():
+    config = RunConfig(method="B2", candidate_count=5)
+    assert config.candidate_count == 5  # General model API remains valid.
+    with pytest.raises(ValueError, match="at most 4"):
+        ResearchPolicy(Model(), None, config)
+    b0 = ResearchPolicy(Model((proposal("a"),)), None, RunConfig(method="B0", candidate_count=99,
+                         options={"candidate_coverage": "bounded"}))
+    b0.candidates(state(), ledger=BudgetLedger())
+    assert b0.generator.requests[0].n == 1
+
+
+def test_coverage_all_invalid_repair_remains_bounded_and_fully_charged(tmp_path):
+    policy, generator, store = coverage_policy(tmp_path, [("bad",) * 4, ("bad",) * 4])
+    ledger = BudgetLedger()
+    with pytest.raises(InvalidCandidate):
+        policy.candidates(state(), ledger=ledger)
+    assert ledger.used.generation_calls == ledger.used.model_requests == 2
+    batches = [e.payload for e in store.read() if e.event_type == "proposal_samples"]
+    assert [batch["source"] for batch in batches] == ["initial", "repair"]
+    assert sum(batch["sample_count"] for batch in batches) == 8
+    assert sum(batch["valid_sample_count"] for batch in batches) == 0
+
+
+def test_unknown_public_action_set_still_uses_two_distinct_action_target(tmp_path):
+    policy, generator, store = coverage_policy(tmp_path, [(proposal("a"),) * 4, (proposal("b"),) * 4])
+    initial = state().evolve(observation=Observation(text="No action list was supplied"))
+    values = policy.candidates(initial, ledger=BudgetLedger())
+    assert len(values) == 2 and len(generator.requests) == 2
+    assert store.read()[-1].payload["coverage_target"] == 2
+
+
+def test_invalid_coverage_option_rejected_before_generation():
+    model = Model()
+    with pytest.raises(ValueError, match="candidate_coverage"):
+        ResearchPolicy(model, None, RunConfig(method="B2", options={"candidate_coverage": "unbounded"}))
+    assert not model.requests

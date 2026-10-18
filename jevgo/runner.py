@@ -65,6 +65,11 @@ class ResearchDomain:
         self._check_interruption(phase)
         return self.policy.candidates(state.research, ledger=self.ledger, phase=phase)
 
+    def candidates_for_scope(self, state: SearchState, *, scope, phase=UsagePhase.SEARCH):
+        self._check_interruption(phase)
+        return self.policy.candidates(state.research, ledger=self.ledger, phase=phase,
+                                      proposal_scope=scope)
+
     def transition(self, state: SearchState, candidate: Candidate, *, phase=UsagePhase.SEARCH):
         phase = UsagePhase(phase)
         self._check_interruption(phase)
@@ -202,14 +207,16 @@ def run_episode(episode: EpisodeSpec, config: RunConfig, environment: Environmen
                 search_decisions += 1
                 events.append(EventRecord(event_type="search", episode_id=episode.episode_id,
                     branch_id="root", payload={"state_id": root.research.state_id,
-                                               "result": result.model_dump(mode="json")}))
+                                               "result": result.model_dump(mode="json"),
+                                               "root_candidate_edges": len(result.rootstats),
+                                               "root_visited_edges": sum(edge.N > 0 for edge in result.rootstats)}))
                 candidate = result.candidate
                 if candidate is None:
                     reason = (TerminationReason.BUDGET_EXHAUSTED if result.stop_reason == "budget_exhausted"
                               else TerminationReason.NO_CANDIDATES)
                     break
             else:
-                candidates = domain.candidates(root, phase=UsagePhase.COMMIT)
+                candidates = domain.candidates_for_scope(root, scope="root", phase=UsagePhase.COMMIT)
                 if not candidates:
                     reason = TerminationReason.NO_CANDIDATES
                     break

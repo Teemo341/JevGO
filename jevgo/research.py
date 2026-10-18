@@ -9,7 +9,7 @@ from typing import Iterable
 from pydantic import ValidationError
 
 from .core import (
-    Action, BudgetLedger, Candidate, EpisodeSpec, EvidenceKind, EvidenceRecord,
+    Action, BudgetExceeded, BudgetLedger, Candidate, EpisodeSpec, EvidenceKind, EvidenceRecord,
     EventRecord, ExperimentPlan, GenerationBackend, GenerationRequest,
     InvalidCandidate, JSONLEventStore, JudgeBackend, JudgeRequest, JudgeRole,
     ModelFailure, Observation, ResearchState, RunConfig, StepResult, Usage, UsagePhase,
@@ -273,6 +273,13 @@ class ResearchPolicy:
         if config.method in ("B1", "B3") and any((config.judge_candidates,
                                                   config.judge_evidence, config.judge_stop)) and judge is None:
             raise ValueError("Enabled JEV roles require a judge backend")
+        # The policy's two-call proposal contract permits at most eight samples.
+        # Keep the general RunConfig/backend API unchanged; reject, never clamp.
+        if config.method != "B0" and config.candidate_count > 4:
+            raise ValueError("ResearchPolicy candidate_count must be at most 4 for non-B0 methods")
+        self.candidate_coverage = config.options.get("candidate_coverage", "off")
+        if self.candidate_coverage not in ("off", "bounded"):
+            raise ValueError("candidate_coverage must be off or bounded")
         self.proposal_repair = config.options.get("proposal_repair", "generic")
         if self.proposal_repair not in ("generic", "bounded"):
             raise ValueError("proposal_repair must be generic or bounded")
@@ -343,7 +350,10 @@ class ResearchPolicy:
         return response.scores
 
     def candidates(self, state: ResearchState, *, ledger: BudgetLedger,
-                   phase: UsagePhase = UsagePhase.SEARCH) -> tuple[Candidate, ...]:
+                   phase: UsagePhase = UsagePhase.SEARCH,
+                   proposal_scope: str = "unspecified") -> tuple[Candidate, ...]:
+        if proposal_scope not in ("unspecified", "root", "tree", "rollout"):
+            raise ValueError("proposal_scope must be unspecified, root, tree or rollout")
         if state.done:
             return ()
         n = 1 if self.config.method == "B0" else self.config.candidate_count
@@ -358,6 +368,14 @@ class ResearchPolicy:
         sources: dict[str, list[dict]] = {}
         errors: list[str] = []
         repair_source: dict = {}
+        allowed = {action.key() for action in state.observation.admissible_actions}
+        target = min(2, len(allowed)) if allowed else 2
+        coverage_enabled = self.candidate_coverage == "bounded" and self.config.method != "B0"
+        source = "initial"
+        coverage_status = "disabled" if not coverage_enabled else "not_needed"
+        if self.config.method == "B0":
+            coverage_status = "b0_single_sample"
+        attempted_calls = completed_calls = sample_total = valid_total = coverage_rounds = 0
         for attempt in range(2):
             request = GenerationRequest(
                 prompt=prompt, system="You plan experiments using only the supplied public evidence.",
@@ -365,12 +383,32 @@ class ResearchPolicy:
                 image_paths=state.observation.image_paths,
                 max_new_tokens=int(self.config.options.get("max_new_tokens", 256)),
             )
-            self._event("generation_request", state, attempt=attempt,
+            self._event("generation_request", state, attempt=attempt, source=source,
+                        proposal_scope=proposal_scope, state_id=state.state_id,
+                        seed_strategy="config_seed_plus_twice_action_count_plus_attempt",
                         request=request.model_dump(mode="json"), phase=UsagePhase(phase).value,
                         public_observation=self.public_observation,
                         proposal_contract=PROPOSAL_CONTRACT, repair_strategy=self.proposal_repair,
                         repair_source=repair_source)
-            response = self.generator.generate(request, ledger=ledger, phase=phase)
+            attempted_calls += 1
+            entries_before, usage_before = len(ledger.entries), ledger.used
+            try:
+                response = self.generator.generate(request, ledger=ledger, phase=phase)
+            except BudgetExceeded as exc:
+                # Only an uncharged preflight refusal may skip optional coverage.
+                # A partial/charged operation or pre-existing overage must retain
+                # its normal interruption semantics; never swallow real work.
+                if (source != "coverage" or len(ledger.entries) != entries_before
+                        or ledger.used != usage_before or ledger.over_budget):
+                    raise
+                coverage_status = "coverage_budget_limited"
+                self._event("coverage_budget_limited", state, attempt=attempt, source=source,
+                            proposal_scope=proposal_scope, state_id=state.state_id,
+                            resources=list(exc.resources), phase=UsagePhase(phase).value,
+                            charged=False, retained_candidate_ids=[c.candidate_id for c in grouped.values()])
+                break
+            completed_calls += 1
+            coverage_rounds += int(source == "coverage")
             if len(response.texts) != n:
                 raise ModelFailure("Generation response count differs from requested samples")
             samples: list[dict] = []
@@ -384,7 +422,8 @@ class ResearchPolicy:
                         grouped[key] = previous.model_copy(update={"sample_count": previous.sample_count + 1})
                     else:
                         grouped[key] = candidate
-                    sources.setdefault(key, []).append({"attempt": attempt, "sample_index": sample_index})
+                    sources.setdefault(key, []).append({"attempt": attempt, "source": source,
+                                                        "sample_index": sample_index})
                     samples.append({"sample_index": sample_index, "accepted": True,
                                     "candidate_id": grouped[key].candidate_id,
                                     "error_stage": None, "error": None})
@@ -392,17 +431,32 @@ class ResearchPolicy:
                     errors.append(str(exc))
                     samples.append({"sample_index": sample_index, "accepted": False,
                                     "candidate_id": None, "error_stage": exc.stage, "error": exc.reason})
-            self._event("proposal_samples", state, attempt=attempt, texts=list(response.texts),
+            batch_valid = sum(s["accepted"] for s in samples)
+            sample_total += len(samples)
+            valid_total += batch_valid
+            self._event("proposal_samples", state, attempt=attempt, source=source,
+                        proposal_scope=proposal_scope, state_id=state.state_id, texts=list(response.texts),
                         errors=list(errors), samples=samples, proposal_contract=PROPOSAL_CONTRACT,
                         identity=response.identity.model_dump(mode="json"),
                         usage=response.usage.model_dump(mode="json"), metadata=response.metadata,
-                        sample_count=len(samples), valid_sample_count=sum(s["accepted"] for s in samples),
+                        sample_count=len(samples), valid_sample_count=batch_valid,
                         unique_action_count=len(grouped))
-            if grouped:
+            if attempt == 1:
+                if source == "coverage":
+                    coverage_status = "target_met_after_coverage" if len(grouped) >= target else "coverage_target_unmet"
                 break
-            if attempt == 0:
+            if not grouped:
                 suffix, repair_source = self._repair_suffix(response.texts, samples)
                 prompt += suffix
+                source = "repair"
+                if coverage_enabled:
+                    coverage_status = "repair_only"
+            elif coverage_enabled and len(grouped) < target:
+                source = "coverage"  # Same prompt; no conditional action instruction.
+            else:
+                if coverage_enabled:
+                    coverage_status = "target_met_initial"
+                break
         if not grouped:
             raise InvalidCandidate("No valid proposals after one repair attempt: " + "; ".join(errors))
         values = tuple(grouped.values())
@@ -423,6 +477,16 @@ class ResearchPolicy:
                            for i, (c, p) in enumerate(zip(values, priors)))
         self._event("candidates", state, candidates=[c.model_dump(mode="json") for c in candidates],
                     proposal_contract=PROPOSAL_CONTRACT,
+                    proposal_scope=proposal_scope, state_id=state.state_id,
+                    phase=UsagePhase(phase).value,
+                    sample_count=sample_total, valid_sample_count=valid_total,
+                    strict_valid_fraction=valid_total / sample_total,
+                    unique_action_count=len(candidates), single_candidate=len(candidates) == 1,
+                    generation_calls_attempted=attempted_calls, generation_calls_completed=completed_calls,
+                    coverage_policy=self.candidate_coverage, coverage_enabled=coverage_enabled,
+                    coverage_target=target, coverage_rounds=coverage_rounds, coverage_status=coverage_status,
+                    frequency_distribution=("conditional_repair_prompt" if source == "repair" else "same_original_prompt"),
+                    seed_correlation_note="Same-depth requests and backend sample seed ranges can overlap; independence is not claimed.",
                     candidate_sources=[{"candidate_id": c.candidate_id, "sources": sources[c.action.key()]}
                                        for c in candidates],
                     prior_semantics="half_frequency_half_judge" if scores else "sample_frequency")

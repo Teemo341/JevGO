@@ -203,7 +203,7 @@ def test_only_independent_valid_repair_executes_and_retains_source(tmp_path):
     assert result.usage.env_steps == 3  # Two verification steps, one repaired action.
     events = [json.loads(line) for line in (tmp_path / "repaired/events.jsonl").read_text().splitlines()]
     candidate = next(e["payload"] for e in events if e["event_type"] == "candidates")
-    assert candidate["candidate_sources"][0]["sources"] == [{"attempt": 1, "sample_index": 0}]
+    assert candidate["candidate_sources"][0]["sources"] == [{"attempt": 1, "source": "repair", "sample_index": 0}]
     sample_events = [e["payload"] for e in events if e["event_type"] == "proposal_samples"]
     assert sample_events[0]["samples"][0]["error_stage"] == "json"
     assert sample_events[1]["samples"][0]["accepted"]
@@ -256,3 +256,18 @@ def test_selected_observation_mode_follows_real_branch_traces_without_memory(tmp
         assert seen_roles == {"candidate", "stop"}  # no_memory disables persistent evidence selection.
     else:
         assert seen_roles == set()
+
+
+@pytest.mark.parametrize("method", ["B0", "B2"])
+def test_runner_records_actual_proposal_scopes_and_root_visited_edges(tmp_path, method):
+    result = run(tmp_path, method)
+    events = [json.loads(line) for line in Path(result.events_path).read_text().splitlines()]
+    requests = [e["payload"] for e in events if e["event_type"] == "generation_request"]
+    assert requests and all(r["source"] in ("initial", "repair", "coverage") for r in requests)
+    if method == "B0":
+        assert {r["proposal_scope"] for r in requests} == {"root"}
+    else:
+        assert {r["proposal_scope"] for r in requests} == {"root", "tree", "rollout"}
+        for search in (e["payload"] for e in events if e["event_type"] == "search"):
+            assert search["root_candidate_edges"] == len(search["result"]["rootstats"])
+            assert search["root_visited_edges"] == sum(edge["N"] > 0 for edge in search["result"]["rootstats"])

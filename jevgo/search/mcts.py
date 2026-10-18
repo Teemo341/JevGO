@@ -44,6 +44,7 @@ class MCTSResult(FrozenModel):
 class _Node:
     state: SearchState
     edges: list[_Edge] | None = None
+    proposal_scope: str = "tree"
 
 
 @dataclass
@@ -107,9 +108,17 @@ class MCTS:
             "sample_count": sum(candidate.sample_count for candidate in group),
         }) for group, mass in zip(groups.values(), masses))
 
+    @staticmethod
+    def _candidates(domain: SearchDomain, state: SearchState, scope: str):
+        # Optional telemetry hook; retain the established SearchDomain protocol.
+        scoped = getattr(domain, "candidates_for_scope", None)
+        if callable(scoped):
+            return scoped(state, scope=scope, phase=UsagePhase.SEARCH)
+        return domain.candidates(state, phase=UsagePhase.SEARCH)
+
     def _expand(self, domain: SearchDomain, node: _Node) -> None:
         self._check_budget(domain)
-        candidates = self._normalize(domain.candidates(node.state, phase=UsagePhase.SEARCH))
+        candidates = self._normalize(self._candidates(domain, node.state, node.proposal_scope))
         node.edges = [_Edge(candidate) for candidate in candidates]
 
     def _select(self, edges: list[_Edge]) -> _Edge:
@@ -126,7 +135,7 @@ class MCTS:
             if depth == 0 and node.edges is not None:
                 candidates = tuple(edge.candidate for edge in node.edges)
             else:
-                candidates = self._normalize(domain.candidates(state, phase=UsagePhase.SEARCH))
+                candidates = self._normalize(self._candidates(domain, state, "rollout"))
             if not candidates:
                 break
             candidate = max(candidates, key=lambda item: item.prior)
@@ -205,7 +214,7 @@ class MCTS:
         return result
 
     def _search(self, domain: SearchDomain, root: SearchState) -> MCTSResult:
-        tree = _Node(root)
+        tree = _Node(root, proposal_scope="root")
         try:
             with self._timed(domain, "mcts.expand_root"):
                 self._expand(domain, tree)
