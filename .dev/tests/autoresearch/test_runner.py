@@ -6,7 +6,7 @@ import pytest
 
 from jevgo.core import (
     BudgetLimits, EpisodeSpec, GenerationResponse, JudgeResponse, ModelIdentity,
-    RunConfig, TerminationReason, Usage,
+    ResearchState, RunConfig, TerminationReason, Usage,
 )
 from jevgo.envs.minigrid import MiniGridAdapter
 from jevgo.runner import run_episode
@@ -216,3 +216,43 @@ def test_repair_budget_interruption_is_not_an_environment_action(tmp_path):
     assert result.final_state.actions == () and not result.success
     assert result.usage.generation_calls == result.usage.model_requests == 1
     assert result.usage.env_steps == 2
+
+
+@pytest.mark.parametrize("method", ["B0", "B1", "B2", "B3"])
+@pytest.mark.parametrize("mode", ["e1", "e1_e2"])
+def test_selected_observation_mode_follows_real_branch_traces_without_memory(tmp_path, method, mode):
+    from jevgo.research import public_state
+    model = Fixture()
+    result = run_episode(episode(), RunConfig(method=method, max_steps=2, simulations=1, rollout_depth=0,
+        use_memory=False, options={"public_observation": mode}), MiniGridAdapter(), model, model,
+        output_dir=tmp_path / "observation-mode")
+    assert result.termination_reason == TerminationReason.MAX_STEPS and len(result.final_state.actions) == 2
+    rows = [json.loads(line) for line in (tmp_path / "observation-mode/events.jsonl").read_text().splitlines()]
+    branches = {}
+    seen_roles = set()
+    available_feedback = 0
+    for row in rows:
+        if row["event_type"] in ("initial_state", "transition"):
+            branches[row["branch_id"]] = ResearchState.model_validate(row["payload"]["state"])
+        elif row["event_type"] in ("generation_request", "judge_request"):
+            request = row["payload"]["request"]
+            field = "prompt" if row["event_type"] == "generation_request" else "context"
+            context = json.JSONDecoder().raw_decode(request[field].split("Public state:\n")[1])[0]
+            expected = public_state(branches[row["branch_id"]], use_memory=False, public_observation=mode)
+            assert context == expected and context["memory"] == []
+            assert row["payload"]["public_observation"] == mode
+            assert "data.image[x][y][channel]" in context["observation"]["text"]
+            assert "action_success" not in json.dumps(context) and "agent_pos" not in json.dumps(context)
+            if field == "context":
+                seen_roles.add(request["role"])
+            if mode == "e1_e2" and context["actions"]:
+                feedback = context["observation_feedback"]
+                assert feedback["status"] == "available"
+                assert feedback["action"] == context["actions"][-1]
+                available_feedback += 1
+    if mode == "e1_e2":
+        assert available_feedback
+    if method in ("B1", "B3"):
+        assert seen_roles == {"candidate", "stop"}  # no_memory disables persistent evidence selection.
+    else:
+        assert seen_roles == set()

@@ -407,3 +407,111 @@ def test_invalid_repair_config_rejected_before_calls(options):
     with pytest.raises(ValueError):
         ResearchPolicy(generator, None, RunConfig(method="B0", options=options))
     assert not generator.requests
+
+
+def minigrid_public_state():
+    from jevgo.envs.minigrid import MiniGridAdapter
+    image = [[[1, 0, 0] for _ in range(7)] for _ in range(7)]
+    raw = {"image": image, "direction": 0, "mission": "public mission"}
+    initial = initialize_state(EpisodeSpec(environment="minigrid", task="public task"),
+                               StepResult(observation=MiniGridAdapter._observation(raw)))
+    image[3][5] = [2, 5, 0]
+    return record_transition(initial, Candidate(action=Action(name="forward"), hypothesis="I moved through the wall"),
+                             StepResult(observation=MiniGridAdapter._observation(raw),
+                                        action_success=False, info={"hidden_fingerprint": "PRIVATE_SECRET"}))
+
+
+def test_observation_modes_keep_legacy_bytes_and_split_e1_from_e2():
+    current = minigrid_public_state()
+    legacy = public_state(current)
+    assert legacy == public_state(current, public_observation="legacy")
+    assert set(legacy) == {"task", "success_criteria", "observation", "actions", "memory"}
+    assert legacy["observation"]["text"] == current.observation.text
+    assert "data.image[x][y][channel]" not in legacy["observation"]["text"]
+    e1 = public_state(current, public_observation="e1")
+    e2 = public_state(current, public_observation="e1_e2")
+    assert "data.image[x][y][channel]" in e1["observation"]["text"]
+    assert e1["observation"] == e2["observation"]
+    assert e1 == {key: value for key, value in e2.items() if key != "observation_feedback"}
+    assert current.observation.model_dump(mode="json") == legacy["observation"]
+    assert e2["observation_feedback"]["local_cell_changes"] == [
+        {"x": 3, "y": 5, "before": [1, 0, 0], "after": [2, 5, 0]}]
+    assert "PRIVATE_SECRET" not in json.dumps(e2)
+    # This task changes observation expression, not model hypothesis semantics.
+    assert "I moved through the wall" in [item["content"] for item in e2["memory"]]
+
+
+def test_e2_is_immediate_feedback_even_when_memory_is_disabled_or_compressed():
+    current = minigrid_public_state()
+    expected = public_state(current, public_observation="e1_e2")["observation_feedback"]
+    for use_memory, working_memory in ((False, current.working_memory), (True, ()), (False, ())):
+        view = public_state(current.evolve(working_memory=working_memory), use_memory=use_memory,
+                            public_observation="e1_e2")
+        assert view["memory"] == []
+        assert view["observation_feedback"] == expected
+    assert expected["previous_observation_ref"] == "e0"
+    assert expected["observation_ref"] == "e2"  # e1 is the unverified hypothesis.
+
+
+def test_e2_unavailable_history_is_explicit_and_does_not_guess():
+    current = minigrid_public_state()
+    for malformed in (
+        current.model_copy(update={"evidence": (), "fact_ids": (), "working_memory": ()}),
+        current.model_copy(update={"branch_id": "other-branch"}),
+    ):
+        feedback = public_state(malformed, public_observation="e1_e2")["observation_feedback"]
+        assert feedback["status"] == "unavailable"
+        assert feedback["local_cell_changes"] == [] and feedback["changed_fields"] == []
+    initial = initialize_state(EpisodeSpec(environment="test", task="goal"),
+                               StepResult(observation=Observation(text="initial")))
+    assert public_state(initial, public_observation="e1_e2")["observation_feedback"]["status"] == "initial"
+
+
+def test_e2_rejects_an_archive_with_an_inserted_sibling_observation():
+    parent = state()
+    left = record_transition(parent, Candidate(action=Action(name="a")),
+                             StepResult(observation=Observation(text="left sibling")), branch_id="left")
+    right = record_transition(parent, Candidate(action=Action(name="b")),
+                              StepResult(observation=Observation(text="right sibling")), branch_id="right")
+    merged = right.model_copy(update={"evidence": parent.evidence + (left.evidence[-1], right.evidence[-1])})
+    feedback = public_state(merged, public_observation="e1_e2")["observation_feedback"]
+    assert feedback["status"] == "unavailable"
+    assert feedback["previous_observation_ref"] is None and feedback["local_cell_changes"] == []
+
+
+@pytest.mark.parametrize("mode", ["legacy", "e1", "e1_e2"])
+@pytest.mark.parametrize("use_memory", [False, True])
+def test_all_methods_and_judge_roles_share_selected_public_information(tmp_path, mode, use_memory):
+    from jevgo.core import JudgeRole
+    current = minigrid_public_state()
+    expected = public_state(current, use_memory=use_memory, public_observation=mode)
+    contexts = []
+    for method in ("B0", "B1", "B2", "B3"):
+        n = 1 if method == "B0" else 4
+        generator, judge = Model((proposal("forward"),) * n), Model()
+        policy = ResearchPolicy(generator, judge, RunConfig(method=method, use_memory=use_memory,
+                                options={"public_observation": mode}),
+                                events=JSONLEventStore(tmp_path / method / "events.jsonl"))
+        ledger = BudgetLedger()
+        policy.candidates(current, ledger=ledger)
+        context = json.JSONDecoder().raw_decode(generator.requests[0].prompt.split("Public state:\n")[1])[0]
+        assert context == expected
+        contexts.append(context)
+        if method in ("B1", "B3"):
+            for role in JudgeRole:
+                policy._scores(current, role, "public context test", ("item",), ledger, UsagePhase.SEARCH)
+            assert all(json.loads(request.context.split("Public state:\n")[1]) == expected for request in judge.requests)
+        else:
+            assert not judge.requests
+        request_events = [e for e in policy.events.read() if e.event_type.endswith("_request")]
+        assert all(e.payload["public_observation"] == mode for e in request_events)
+    assert contexts == [expected] * 4
+
+
+def test_invalid_public_observation_mode_rejected_before_calls():
+    generator = Model()
+    with pytest.raises(ValueError, match="public_observation"):
+        ResearchPolicy(generator, None, RunConfig(method="B0", options={"public_observation": "hidden"}))
+    with pytest.raises(ValueError, match="public_observation"):
+        public_state(state(), public_observation="hidden")
+    assert not generator.requests

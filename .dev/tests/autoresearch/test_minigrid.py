@@ -3,14 +3,16 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from minigrid.core.world_object import Key
+from minigrid.core.constants import IDX_TO_COLOR, IDX_TO_OBJECT, STATE_TO_IDX
+from minigrid.core.world_object import Key, Wall
 
 from jevgo.core import (
     Action, BudgetExceeded, BudgetLedger, BudgetLimits, EnvironmentAdapter,
     EnvironmentFailure, EnvironmentSnapshot, EpisodeSpec, UnsupportedCapability,
-    Usage, UsagePhase,
+    Usage, UsagePhase, Candidate, StepResult,
 )
-from jevgo.envs.minigrid import MiniGridAdapter
+from jevgo.envs.minigrid import MiniGridAdapter, describe_public_observation
+from jevgo.research import initialize_state, public_state, record_transition
 
 
 def spec(**options):
@@ -326,3 +328,105 @@ def test_initial_verification_failure_never_claims_branching(adapter, monkeypatc
     assert ledger.used.env_snapshots == 2
     assert ledger.used.env_restores == 1
     assert any(entry.failed for entry in ledger.entries)
+
+
+@pytest.mark.parametrize("direction,compass", [(0, "east"), (1, "south"), (2, "west"), (3, "north")])
+def test_e1_axes_encoding_and_ego_front_coordinates_in_all_directions(adapter, direction, compass):
+    adapter.reset(spec(verify_replay=False), ledger=BudgetLedger())
+    env = adapter._env.unwrapped
+    env.agent_dir = direction
+    raw = env.gen_obs()
+    observation = adapter._observation(raw)
+    original = observation.model_dump(mode="json")
+    explanation = describe_public_observation(observation)
+    assert tuple(env.get_view_coords(*env.agent_pos)) == (3, 6)
+    assert tuple(env.get_view_coords(*env.front_pos)) == (3, 5)
+    assert f"Direction: {direction}" in explanation and f"{direction}={compass}" in explanation
+    assert "data.image[x][y][channel]" in explanation
+    assert "(x=3,y=6)" in explanation and "(x=3,y=5)" in explanation
+    assert "decreasing local y always means forward" in explanation
+    assert "not necessarily global north" in explanation
+    assert "Text grid rows iterate y and columns iterate x" in explanation
+    for index, name in IDX_TO_OBJECT.items():
+        assert f"{index}={name}" in explanation
+    for index, name in IDX_TO_COLOR.items():
+        assert f"{index}={name}" in explanation
+    for name, index in STATE_TO_IDX.items():
+        assert f"{index}={name}" in explanation
+    assert "carried object or empty, not an agent marker" in explanation
+    assert observation.model_dump(mode="json") == original
+
+
+def test_e1_occlusion_and_hidden_world_mutations_cannot_change_public_feedback(adapter):
+    adapter.reset(spec(verify_replay=False), ledger=BudgetLedger())
+    env = adapter._env.unwrapped
+    env.see_through_walls = False
+    for y in range(env.height):
+        env.grid.set(2, y, Wall())
+    env.grid.set(3, 2, Key("red"))
+    before = adapter._observation(env.gen_obs())
+    assert any(cell[0] == 0 for column in before.data["image"] for cell in column)
+    env.grid.set(3, 2, Key("blue"))  # Entirely behind the separating wall.
+    after = adapter._observation(env.gen_obs())
+    assert before == after
+    assert describe_public_observation(before) == describe_public_observation(after)
+    assert "Unseen (object 0) means unknown, not empty" in describe_public_observation(after)
+    parent = initialize_state(spec(), StepResult(observation=before))
+    first = record_transition(parent, Candidate(action=Action(name="toggle")), StepResult(
+        observation=after, action_success=False, info={"private": "secret first world"}))
+    second = record_transition(parent, Candidate(action=Action(name="toggle")), StepResult(
+        observation=after, action_success=True, info={"private": "secret second world"}))
+    assert public_state(first, public_observation="e1_e2") == public_state(second, public_observation="e1_e2")
+    feedback = public_state(first, public_observation="e1_e2")["observation_feedback"]
+    assert feedback["changed_fields"] == [] and feedback["local_cell_changes"] == []
+    assert feedback["summary"] == "Public observation unchanged."
+    assert "moved" not in feedback["summary"] and "wall" not in feedback["summary"]
+
+
+def test_e2_wall_front_and_restored_siblings_use_their_actual_predecessor(adapter):
+    ledger = BudgetLedger()
+    root = initialize_state(spec(), adapter.reset(spec(), ledger=ledger))
+    saved_root = adapter.snapshot(ledger=ledger)
+    left = record_transition(root, Candidate(action=Action(name="left")),
+                             act(adapter, ledger, "left", UsagePhase.SEARCH), branch_id="left")
+    left_feedback = public_state(left, public_observation="e1_e2")["observation_feedback"]
+    assert left_feedback["public_data_changes"]["direction"] == {"before": 0, "after": 3}
+    assert adapter.restore(saved_root, ledger=ledger).observation == root.observation
+    right = record_transition(root, Candidate(action=Action(name="right")),
+                              act(adapter, ledger, "right", UsagePhase.SEARCH), branch_id="right")
+    right_feedback = public_state(right, public_observation="e1_e2")["observation_feedback"]
+    assert right_feedback["public_data_changes"]["direction"] == {"before": 0, "after": 1}
+    assert left_feedback["previous_observation_ref"] == right_feedback["previous_observation_ref"] == "e0"
+    assert left.evidence[-1].evidence_id not in {e.evidence_id for e in right.evidence}
+    adapter.restore(saved_root, ledger=ledger)
+    path = root
+    for _ in range(2):
+        result = act(adapter, ledger, "forward")
+        path = record_transition(path, Candidate(action=Action(name="forward")), result)
+    wall_snapshot = adapter.snapshot(ledger=ledger)
+    expected = public_state(path, public_observation="e1_e2")
+    act(adapter, ledger, "right", UsagePhase.SEARCH)
+    adapter.restore(wall_snapshot, ledger=ledger)
+    assert public_state(path, public_observation="e1_e2") == expected
+    blocked = act(adapter, ledger, "forward")
+    assert blocked.action_success is False  # Private oracle is checked only by this test.
+    child = record_transition(path, Candidate(action=Action(name="forward")), blocked)
+    feedback = public_state(child, public_observation="e1_e2")["observation_feedback"]
+    assert feedback["status"] == "available" and feedback["summary"] == "Public observation unchanged."
+    assert feedback["action"]["name"] == "forward"
+    assert feedback["previous_observation_ref"] == "e2" and feedback["observation_ref"] == "e3"
+
+
+def test_e2_repeated_corridor_appearance_does_not_claim_no_movement(adapter):
+    ledger = BudgetLedger()
+    initial = adapter.reset(spec(env_id="MiniGrid-Empty-16x16-v0", verify_replay=False), ledger=ledger)
+    parent = initialize_state(spec(), initial)
+    private_before = tuple(adapter._env.unwrapped.agent_pos)
+    moved = act(adapter, ledger, "forward")
+    assert tuple(adapter._env.unwrapped.agent_pos) != private_before and moved.action_success
+    assert moved.observation == initial.observation
+    child = record_transition(parent, Candidate(action=Action(name="forward")), moved)
+    feedback = public_state(child, public_observation="e1_e2")["observation_feedback"]
+    assert feedback["summary"] == "Public observation unchanged."
+    assert feedback["local_cell_changes"] == []
+    assert "do not establish whether the agent moved" in feedback["interpretation_limit"]

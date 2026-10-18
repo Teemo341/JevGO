@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Mapping
 from typing import Iterable
 
 from pydantic import ValidationError
@@ -11,11 +12,12 @@ from .core import (
     Action, BudgetLedger, Candidate, EpisodeSpec, EvidenceKind, EvidenceRecord,
     EventRecord, ExperimentPlan, GenerationBackend, GenerationRequest,
     InvalidCandidate, JSONLEventStore, JudgeBackend, JudgeRequest, JudgeRole,
-    ModelFailure, ResearchState, RunConfig, StepResult, Usage, UsagePhase,
+    ModelFailure, Observation, ResearchState, RunConfig, StepResult, Usage, UsagePhase,
 )
 
 
 PROPOSAL_CONTRACT = "strict_generated_proposal_v1"
+PUBLIC_OBSERVATION_MODES = ("legacy", "e1", "e1_e2")
 
 
 class ProposalValidationError(InvalidCandidate):
@@ -150,13 +152,100 @@ def record_transition(state: ResearchState, candidate: Candidate, result: StepRe
     )
 
 
-def public_state(state: ResearchState, *, use_memory: bool = True) -> dict:
+def _comparable_observation(observation: Observation, *, environment: str) -> dict:
+    # Read only Observation fields, never action_success, score, info, or handles.
+    public = observation.model_dump(mode="json")
+    if environment.lower() == "minigrid":
+        public["data"] = {key: public["data"][key] for key in ("image", "direction", "mission")
+                          if key in public["data"]}
+    # File names can vary between worker/replay runs without a visible change.
+    # This comparison does not claim to inspect the attached image pixels.
+    public["image_paths"] = [f"image_{i}" for i in range(len(observation.image_paths))]
+    return public
+
+
+def _record_observation(record: EvidenceRecord) -> Observation | None:
+    if record.kind != EvidenceKind.OBSERVATION or record.origin != "environment":
+        return None
+    public = record.raw.get("observation")
+    if not isinstance(public, Mapping):
+        return None
+    fields = ("text", "data", "admissible_actions", "image_paths")
+    try:
+        return Observation.model_validate({key: public[key] for key in fields if key in public})
+    except (ValueError, TypeError):
+        return None
+
+
+def _public_observation_feedback(state: ResearchState, aliases: dict[str, str]) -> dict:
+    """E2: one-step feedback from this immutable path, independent of memory slots."""
+    records = tuple((record, _record_observation(record)) for record in state.evidence
+                    if record.kind == EvidenceKind.OBSERVATION
+                    and record.origin == "environment" and record.source == state.episode.environment)
+    current_ref = aliases[records[-1][0].evidence_id] if records else None
+    feedback = {
+        "scope": "immediate_public_observation", "status": "initial" if not state.actions else "unavailable",
+        "action": state.actions[-1].model_dump(mode="json") if state.actions else None,
+        "previous_observation_ref": None, "observation_ref": current_ref,
+        "changed_fields": [], "local_cell_changes": [], "public_data_changes": {},
+        "summary": "No preceding public observation is available for a one-step comparison.",
+        "interpretation_limit": "Public observation changes or lack of changes do not establish whether "
+                                "the agent moved or an action succeeded. Local view slots are not world locations.",
+    }
+    if not state.actions or len(records) < 2:
+        return feedback
+    expected_actions = (None,) + state.actions
+    if (len(records) != len(expected_actions)
+            or any(record.action != action for (record, _), action in zip(records, expected_actions))):
+        return feedback
+    current_record, current_observation = records[-1]
+    previous_record, previous_observation = records[-2]
+    # Do not invent a predecessor if the current record does not belong to this
+    # path/current observation, or if an old archive lacks the public payload.
+    if (current_record.branch_id != state.branch_id or current_record.action != state.actions[-1]
+            or current_observation is None or previous_observation is None
+            or current_observation != state.observation):
+        return feedback
+    before = _comparable_observation(previous_observation, environment=state.episode.environment)
+    after = _comparable_observation(state.observation, environment=state.episode.environment)
+    changed = [field for field in ("text", "data", "admissible_actions", "image_paths")
+               if before[field] != after[field]]
+    cells = []
+    if state.episode.environment.lower() == "minigrid":
+        old_image, new_image = before["data"].get("image"), after["data"].get("image")
+        if (isinstance(old_image, list) and isinstance(new_image, list)
+                and len(old_image) == len(new_image) == 7
+                and all(isinstance(column, list) and len(column) == 7 for column in old_image + new_image)):
+            cells = [{"x": x, "y": y, "before": old_image[x][y], "after": new_image[x][y]}
+                     for x in range(7) for y in range(7) if old_image[x][y] != new_image[x][y]]
+    feedback.update(
+        status="available", previous_observation_ref=aliases[previous_record.evidence_id],
+        changed_fields=changed, local_cell_changes=cells,
+        public_data_changes={key: {"before": before["data"].get(key), "after": after["data"].get(key)}
+                             for key in ("direction", "mission")
+                             if state.episode.environment.lower() == "minigrid"
+                             and before["data"].get(key) != after["data"].get(key)},
+        summary="Public observation changed in: " + ", ".join(changed) + "." if changed
+                else "Public observation unchanged.",
+    )
+    if before["image_paths"] or after["image_paths"]:
+        feedback["summary"] += " Attached image pixels and file identities were not compared."
+    return feedback
+
+
+def public_state(state: ResearchState, *, use_memory: bool = True,
+                 public_observation: str = "legacy") -> dict:
     """Whitelist model-visible data; raw scorecards/info and snapshots stay private."""
+    if public_observation not in PUBLIC_OBSERVATION_MODES:
+        raise ValueError("public_observation must be legacy, e1 or e1_e2")
     selected = set(state.working_memory) if use_memory else set()
     aliases = {e.evidence_id: f"e{i}" for i, e in enumerate(state.evidence)}
     observation = state.observation.model_dump(mode="json")
     observation["image_paths"] = [f"image_{i}" for i in range(len(state.observation.image_paths))]
-    return {
+    if public_observation != "legacy" and state.episode.environment.lower() == "minigrid":
+        from .envs.minigrid import describe_public_observation
+        observation["text"] = describe_public_observation(state.observation)
+    public = {
         "task": state.episode.task, "success_criteria": state.episode.success_criteria,
         "observation": observation,
         "actions": [a.model_dump(mode="json") for a in state.actions],
@@ -167,6 +256,9 @@ def public_state(state: ResearchState, *, use_memory: bool = True) -> dict:
             for e in state.evidence if e.evidence_id in selected
         ],
     }
+    if public_observation == "e1_e2":
+        public["observation_feedback"] = _public_observation_feedback(state, aliases)
+    return public
 
 
 class ResearchPolicy:
@@ -175,6 +267,9 @@ class ResearchPolicy:
     def __init__(self, generator: GenerationBackend, judge: JudgeBackend | None,
                  config: RunConfig, *, events: JSONLEventStore | None = None) -> None:
         self.generator, self.judge, self.config, self.events = generator, judge, config, events
+        self.public_observation = config.options.get("public_observation", "legacy")
+        if self.public_observation not in PUBLIC_OBSERVATION_MODES:
+            raise ValueError("public_observation must be legacy, e1 or e1_e2")
         if config.method in ("B1", "B3") and any((config.judge_candidates,
                                                   config.judge_evidence, config.judge_stop)) and judge is None:
             raise ValueError("Enabled JEV roles require a judge backend")
@@ -197,7 +292,8 @@ class ResearchPolicy:
                                            branch_id=state.branch_id, payload=payload))
 
     def _context(self, state: ResearchState) -> str:
-        return json.dumps(public_state(state, use_memory=self.config.use_memory), ensure_ascii=False)
+        return json.dumps(public_state(state, use_memory=self.config.use_memory,
+                                       public_observation=self.public_observation), ensure_ascii=False)
 
     def _repair_suffix(self, texts: tuple[str, ...], samples: list[dict]) -> tuple[str, dict]:
         # This is format repair only: one call, the same n/output cap/temperature,
@@ -235,7 +331,7 @@ class ResearchPolicy:
             items=items, image_paths=state.observation.image_paths,
         )
         self._event("judge_request", state, request=request.model_dump(mode="json"),
-                    phase=UsagePhase(phase).value)
+                    phase=UsagePhase(phase).value, public_observation=self.public_observation)
         response = self.judge.score(request, ledger=ledger, phase=phase)
         if len(response.scores) != len(items):
             raise ModelFailure("Judge scores must correspond one-to-one with items")
@@ -271,6 +367,7 @@ class ResearchPolicy:
             )
             self._event("generation_request", state, attempt=attempt,
                         request=request.model_dump(mode="json"), phase=UsagePhase(phase).value,
+                        public_observation=self.public_observation,
                         proposal_contract=PROPOSAL_CONTRACT, repair_strategy=self.proposal_repair,
                         repair_source=repair_source)
             response = self.generator.generate(request, ledger=ledger, phase=phase)

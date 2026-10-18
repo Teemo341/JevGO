@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import gymnasium as gym
 import minigrid  # noqa: F401: registers the MiniGrid environments
-from minigrid.core.constants import IDX_TO_COLOR, IDX_TO_OBJECT
+from minigrid.core.constants import IDX_TO_COLOR, IDX_TO_OBJECT, STATE_TO_IDX
 from minigrid.minigrid_env import MiniGridEnv
 import numpy as np
 
@@ -26,6 +26,27 @@ _ACTIONS = tuple(Action(name=name) for name in (
     "left", "right", "forward", "pickup", "drop", "toggle", "done",
 ))
 _ACTION_INDEX = {action.name: index for index, action in enumerate(_ACTIONS)}
+
+
+def describe_public_observation(observation: Observation) -> str:
+    """E1: explain the public 7x7 encoding without consulting a live world."""
+    objects = ", ".join(f"{index}={name}" for index, name in sorted(IDX_TO_OBJECT.items()))
+    colors = ", ".join(f"{index}={name}" for index, name in sorted(IDX_TO_COLOR.items()))
+    states = ", ".join(f"{index}={name}" for name, index in sorted(STATE_TO_IDX.items(), key=lambda p: p[1]))
+    return observation.text + (
+        "\nPublic MiniGrid encoding (zero-based local coordinates): "
+        "data.image[x][y][channel], x=0..6 left to right, y=0..6 far to near; "
+        "channel 0=object, 1=color, 2=door state. Text grid rows iterate y and columns iterate x. "
+        "The agent is at local (x=3,y=6); the cell directly forward is (x=3,y=5). "
+        "The agent's local cell encodes the carried object or empty, not an agent marker. "
+        "The local view rotates with the agent: decreasing local y always means forward, "
+        "not necessarily global north. The public compass is data.direction: "
+        "0=east, 1=south, 2=west, 3=north. Left/right turn the agent; forward acts toward "
+        "the local front cell. Local coordinates describe view slots, not persistent world locations. "
+        f"Object codes: {objects}. Color codes: {colors}. Door-state codes: {states}; "
+        "interpret channel 2 this way only for doors. Unseen (object 0) means unknown, "
+        "not empty; no contents behind occlusion are inferred."
+    )
 
 
 @dataclass(frozen=True)
