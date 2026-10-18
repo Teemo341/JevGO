@@ -60,7 +60,8 @@ def summarize_condition(path):
     for row in raw_http:
         try:
             body = json.loads(row["raw_response"])
-            usage = body.get("usage") or {}
+            usage = body.get("usage")
+            usage = usage if isinstance(usage, dict) else {}
         except (KeyError, ValueError, AttributeError):
             usage = {}
         for remote, local in (("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens")):
