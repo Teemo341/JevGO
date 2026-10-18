@@ -23,6 +23,10 @@ def test_independent_reconciliation_detects_dropped_failed_cost(tmp_path):
     assert all(report["checks"].values())
     assert not report["model_cost_complete"]
     assert report["cost_by_role"]["generation:unspecified"]["input_tokens"] == 7
+    (tmp_path / "result.json").write_text(json.dumps({"usage": {**usage, "input_tokens": 0}}))
+    report = tool.summarize_condition(tmp_path)
+    assert not report["checks"]["result_usage_matches_ledger"]
+    assert report["ledger_usage"]["input_tokens"] == 7
     ledger["used"] = {**usage, "input_tokens": 0}
     (tmp_path / "ledger.json").write_text(json.dumps(ledger))
     report = tool.summarize_condition(tmp_path)

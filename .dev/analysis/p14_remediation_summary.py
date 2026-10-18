@@ -67,6 +67,8 @@ def summarize_condition(path):
             else:
                 raw_unknown.append({"request_number": row["request_number"], "field": local})
     checks = {"ledger_sum_matches": ledger_matches,
+              "result_usage_matches_ledger": all(math.isclose(result["usage"].get(k, 0), v, rel_tol=1e-10, abs_tol=1e-7)
+                                                  for k, v in ledger["used"].items()),
               "logical_request_finish_pairs_match": [r["call"] for r in requests] == [r["call"] for r in finished],
               "logical_model_cost_matches_ledger": model_matches}
     if http:
@@ -80,7 +82,7 @@ def summarize_condition(path):
         if initial:
             observation = initial["payload"]["state"]["observation"]
     digest = lambda obj: hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-    return {"path": str(path.resolve()), "result": result, "checks": checks,
+    return {"path": str(path.resolve()), "result": result, "checks": checks, "ledger_usage": ledger["used"],
             "cost_by_role": {k: totals(v) for k, v in role_entries.items()}, "unknown_usage": unknown,
             "http_unknown_usage": raw_unknown, "model_cost_complete": not unknown and not raw_unknown,
             "samples": sum(len(p["texts"]) for p in proposals),
@@ -117,10 +119,15 @@ def main():
                 conditions.append({"path": str(path.resolve()), "not_executed_or_incomplete": True,
                                    "planned_condition": condition})
     completed = [c for c in conditions if "result" in c]
+    capacity = [c for c in completed if c["result"].get("kind") == "capacity_request"]
+    policy = [c for c in completed if c["result"].get("kind") != "capacity_request"]
+    all_completed = bool(conditions) and len(completed) == len(conditions)
     data = {"batches": batches, "conditions": conditions,
-            "actual_usage": totals([{"usage": c["result"]["usage"]} for c in completed]),
-            "accounting_checks_pass": all(all(c["checks"].values()) for c in completed),
-            "all_usage_complete": all(c["model_cost_complete"] for c in completed),
+            "actual_usage": totals([{"usage": c["ledger_usage"]} for c in policy]),
+            "direct_capacity_usage": totals([{"usage": c["ledger_usage"]} for c in capacity]),
+            "all_conditions_completed": all_completed,
+            "accounting_checks_pass": all_completed and all(all(c["checks"].values()) for c in completed),
+            "all_usage_complete": all_completed and all(c["model_cost_complete"] for c in completed),
             "scope": "New finite policy experiments only; excludes capacity probes, CPU setup, historical inference and model/service startup.",
             "P15_started": False, "effectiveness_verified": False}
     args.output.write_text(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
