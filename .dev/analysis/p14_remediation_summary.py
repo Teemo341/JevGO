@@ -48,6 +48,8 @@ def summarize_condition(path):
     event_path = path / "episode/events.jsonl" if (path / "episode/events.jsonl").exists() else path / "probe-events.jsonl"
     events = rows(event_path)
     proposals = [e["payload"] for e in events if e["event_type"] == "proposal_samples"]
+    direct_texts = [text for call in finished for text in call.get("response", {}).get("texts", [])] if result.get("kind") == "request" else []
+    direct_validations = result.get("validations", []) if result.get("kind") == "request" else []
     candidates = [e["payload"] for e in events if e["event_type"] == "candidates"]
     searches = [e["payload"]["result"] for e in events if e["event_type"] == "search"]
     memories = [e["payload"] for e in events if e["event_type"] == "memory_selection"]
@@ -75,6 +77,8 @@ def summarize_condition(path):
     if http:
         checks.update(http_request_count_matches=len(raw_http) == ledger["used"]["model_requests"],
                       http_known_tokens_match=all(raw_known[k] == ledger["used"][k] for k in raw_known))
+    if result.get("kind") == "request":
+        checks["direct_sample_validation_count_matches"] = len(direct_texts) == len(direct_validations)
     observation = None
     if (path / "state.json").exists():
         observation = read(path / "state.json")["observation"]
@@ -87,8 +91,8 @@ def summarize_condition(path):
             "cost_by_role": {k: totals(v) for k, v in role_entries.items()}, "unknown_usage": unknown,
             "ledger_unknown_usage": ledger_unknown,
             "http_unknown_usage": raw_unknown, "model_cost_complete": not ledger_unknown and not unknown and not raw_unknown,
-            "samples": sum(len(p["texts"]) for p in proposals),
-            "strict_valid_samples": sum(sum(s["accepted"] for s in p.get("samples", [])) for p in proposals),
+            "samples": sum(len(p["texts"]) for p in proposals) + len(direct_texts),
+            "strict_valid_samples": sum(sum(s["accepted"] for s in p.get("samples", [])) for p in proposals) + sum(v["valid"] for v in direct_validations),
             "candidate_calls": len(candidates), "candidate_unique_action_counts": [len(p["candidates"]) for p in candidates],
             "singleton_calls": sum(len(p["candidates"]) == 1 for p in candidates),
             "root_searches": [{"candidate_edges": len(s["rootstats"]),
