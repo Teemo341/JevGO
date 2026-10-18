@@ -131,3 +131,54 @@ def test_same_manifest_condition_cannot_be_silently_retried(tmp_path):
     p14.claim_attempt(manifest, "w262144-single", tmp_path / "first")
     with pytest.raises(FileExistsError):
         p14.claim_attempt(manifest, "w262144-single", tmp_path / "second")
+
+
+def test_plain_json_http_failure_retains_partial_known_service_usage(tmp_path):
+    async def run():
+        transport = httpx.MockTransport(lambda req: httpx.Response(500, json={
+            "error": "partial decode failure", "usage": {"prompt_tokens": 3, "completion_tokens": 1}}))
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await p14.request_once(client, "http://localhost", request(), tmp_path / "partial.jsonl", 2)
+    result = asyncio.run(run())
+    assert result["input_tokens"] == 3 and result["output_tokens"] == 1
+    assert result["usage_complete"] and result["error"] == "HTTP 500"
+    assert not result["prefill_decode_pass"]
+
+
+def test_active_gauge_must_coincide_with_target_http_overlap():
+    metadata = {"exclusive_service": True, "runtime_source_hashes_verified": True,
+        "active_sequence_evidence": {"metric": p14.METRIC, "unit": "scheduler_sequences",
+                                     "source_sha256": {"source": "verified"}}}
+    condition = {"http_requests": 4, "sequences": 4}
+    samples = [{"monotonic": 4.5, "status": 200, "raw": 'vllm:num_requests_running 4\n'}]
+    sequential = [{"start_monotonic": i * 2, "end_monotonic": i * 2 + 1} for i in range(4)]
+    result = p14.concurrency_summary(sequential, samples, condition, metadata)
+    assert result["http_overlap_peak"] == 1
+    assert result["scheduler_running_peak"] == 4
+    assert not result["active_sequences_target_met"]
+    # Even an overlap peak of four at a DIFFERENT time cannot qualify.
+    different_peak = [{"start_monotonic": 0, "end_monotonic": 1} for _ in range(3)]
+    different_peak.append({"start_monotonic": 0, "end_monotonic": 9})
+    result = p14.concurrency_summary(different_peak, samples, condition, metadata)
+    assert result["http_overlap_peak"] == 4 and not result["active_sequences_target_met"]
+
+
+def test_overlong_decode_is_charged_but_fails_declared_maximum():
+    result = p14.response_summary(chunks(actual=3), request(target=2))
+    assert result["output_tokens"] == 3 and result["actual_decode_per_sequence"] == {0: 3}
+    assert not result["decode_target_met"] and not result["prefill_decode_pass"]
+
+
+@pytest.mark.parametrize("malformed", [None, [None], [{"index": []}], [{"index": 0, "token_ids": "bad"}]])
+def test_malformed_sse_returns_failure_summary_with_known_usage(tmp_path, malformed):
+    async def run():
+        raw = "data: " + json.dumps({"choices": malformed,
+            "usage": {"prompt_tokens": 3, "completion_tokens": 1}}) + "\n"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda req: httpx.Response(200, text=raw))) as client:
+            return await p14.request_once(client, "http://localhost", request(), tmp_path / "bad.jsonl", 2)
+    result = asyncio.run(run())
+    assert not result["prefill_decode_pass"] and result["error"]
+    assert result["input_tokens"] == 3 and result["output_tokens"] == 1
+    assert result["network_attempted"]
+    assert json.loads((tmp_path / "bad.jsonl").read_text().splitlines()[-1])["event"] == "finished"

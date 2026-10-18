@@ -198,17 +198,33 @@ def response_summary(chunks, request, error=None):
         if chunk.get("usage") is not None:
             usage = chunk["usage"]
         if chunk.get("prompt_token_ids") is not None:
-            prompt_ids = chunk["prompt_token_ids"]
-        for choice in chunk.get("choices", []):
+            ids = chunk["prompt_token_ids"]
+            if isinstance(ids, list) and all(type(x) is int and x >= 0 for x in ids):
+                prompt_ids = ids
+            else:
+                error = error or "invalid_prompt_token_ids"
+        choices = chunk.get("choices", [])
+        if not isinstance(choices, list):
+            error = error or "invalid_choices"
+            continue
+        for choice in choices:
+            if not isinstance(choice, dict):
+                error = error or "invalid_choice"
+                continue
             i = choice.get("index")
-            if i not in counts:
+            if type(i) is not int or i not in counts:
                 error = error or "unexpected_choice_index"
                 continue
             ids = choice.get("token_ids")
-            if isinstance(ids, list) and all(type(x) is int for x in ids):
+            if isinstance(ids, list) and all(type(x) is int and x >= 0 for x in ids):
                 counts[i] = (counts[i] or 0) + len(ids)
+            elif ids is not None:
+                error = error or "invalid_completion_token_ids"
             if choice.get("finish_reason") is not None:
-                finish[i] = choice["finish_reason"]
+                if isinstance(choice["finish_reason"], str):
+                    finish[i] = choice["finish_reason"]
+                else:
+                    error = error or "invalid_finish_reason"
     input_tokens = usage_value(usage, "prompt_tokens")
     output_tokens = usage_value(usage, "completion_tokens")
     target = payload["max_tokens"]
@@ -216,7 +232,7 @@ def response_summary(chunks, request, error=None):
     # fabricate per-choice output lengths. Missing token IDs remain unknown.
     if n == 1 and counts[0] is None and output_tokens is not None:
         counts[0] = output_tokens
-    target_met = all(value is not None and value >= target for value in counts.values())
+    target_met = all(value == target for value in counts.values())
     prompt_match = (input_tokens == request["measurement"]["offline_input_tokens"]
                     if input_tokens is not None else None)
     ids_match = (ids_digest(prompt_ids) == request["measurement"]["token_ids_sha256"]
@@ -237,7 +253,7 @@ def response_summary(chunks, request, error=None):
 async def request_once(client, base_url, item, path, timeout):
     start = time.monotonic()
     capture_json(path, {"event": "start", "monotonic": start, "request": item})
-    chunks, first, error, status = [], None, None, None
+    chunks, raw_lines, first, error, status = [], [], None, None, None
     try:
         async with asyncio.timeout(timeout), client.stream("POST", base_url + item["endpoint"], json=item["payload"]) as response:
             status = response.status_code
@@ -245,6 +261,7 @@ async def request_once(client, base_url, item, path, timeout):
                 "headers": dict(response.headers), "monotonic": time.monotonic()})
             async for line in response.aiter_lines():
                 stamp = time.monotonic()
+                raw_lines.append(line)
                 capture_json(path, {"event": "raw_line", "monotonic": stamp, "line": line})
                 if not line.startswith("data:") or line[5:].strip() == "[DONE]":
                     continue
@@ -255,11 +272,27 @@ async def request_once(client, base_url, item, path, timeout):
                     chunks.append(chunk)
                     if chunk.get("error"):
                         error = f"service_error: {chunk['error']}"
-                    if first is None and any(c.get("token_ids") or c.get("delta", {}).get("content")
-                                             for c in chunk.get("choices", [])):
+                    choices = chunk.get("choices", [])
+                    if not isinstance(choices, list) or any(not isinstance(c, dict) for c in choices):
+                        raise ValueError("SSE choices must be a list of objects")
+                    if first is None and any(c.get("token_ids") or
+                            (isinstance(c.get("delta"), dict) and c["delta"].get("content"))
+                            for c in choices):
                         first = stamp
                 except (ValueError, TypeError) as exc:
                     error = f"invalid_sse: {exc}"
+            # Error responses commonly use ordinary JSON rather than SSE. The
+            # body can contain real partial usage; preserve it instead of
+            # replacing known billed work with unknowns.
+            if not chunks:
+                try:
+                    body = json.loads("\n".join(raw_lines))
+                    if isinstance(body, dict):
+                        chunks.append(body)
+                        if body.get("error"):
+                            error = f"service_error: {body['error']}"
+                except (ValueError, TypeError):
+                    pass  # Raw bytes/lines remain in the journal.
             if status != 200:
                 error = f"HTTP {status}"
     except Exception as exc:
@@ -321,10 +354,17 @@ def concurrency_summary(rows, samples, condition, metadata):
                  bool(semantics.get("source_sha256")) and
                  metadata.get("runtime_source_hashes_verified") is True)
     overlap = overlap_max(rows)
-    met = qualified and peak is not None and peak >= condition["sequences"]
+    coincident = [max(metrics_values(s["raw"], METRIC), default=0) for s in samples
+                  if s["status"] == 200 and sum(
+                      r["start_monotonic"] <= s["monotonic"] < r["end_monotonic"]
+                      for r in rows) >= condition["http_requests"]]
+    coincident_peak = max(coincident, default=None)
+    met = (qualified and coincident_peak is not None
+           and coincident_peak >= condition["sequences"])
     status = "observed_active_sequences" if met else "active_sequence_target_unproven"
     return {"status": status, "http_overlap_peak": overlap, "target_http": condition["http_requests"],
             "target_sequences": condition["sequences"], "scheduler_running_peak": peak,
+            "scheduler_running_peak_during_target_http_overlap": coincident_peak,
             "metric_semantics_qualified": qualified, "active_sequences_target_met": bool(met),
             "limitation": "sampled scheduler state; queue overlap/completion alone is not active concurrency"}
 
