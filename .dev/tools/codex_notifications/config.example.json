@@ -1,0 +1,12 @@
+{
+  "socket_path": "/home/you/.codex/app-server-control/app-server-control.sock",
+  "project_id": "<project-id>",
+  "roots": [
+    "/path/to/JevGO"
+  ],
+  "recipient": "you@example.com",
+  "mail_thread_id": "<mail-thread-id>",
+  "mail_server": "codex_apps",
+  "mail_tool": "gmail.send_email",
+  "poll_seconds": 5
+}
