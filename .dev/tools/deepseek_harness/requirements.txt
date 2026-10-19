@@ -1,0 +1,4 @@
+# Official SDK and MCP transport, isolated from JevGO's runtime environment.
+deepseek-harness-sdk==0.2.1rc2
+mcp==2.3.0
+pytest==8.4.2
